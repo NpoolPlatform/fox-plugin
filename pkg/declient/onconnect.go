@@ -5,20 +5,20 @@ import (
 	"time"
 
 	"github.com/NpoolPlatform/fox-plugin/pkg/client"
-	"github.com/NpoolPlatform/fox-plugin/pkg/config"
 	"github.com/NpoolPlatform/go-service-framework/pkg/logger"
 	"github.com/NpoolPlatform/go-service-framework/pkg/wlog"
 	"github.com/NpoolPlatform/message/npool/foxproxy"
+	"google.golang.org/grpc/credentials"
 )
 
-func (mgr *DEClientMGR) StartDEStream(ctx context.Context) {
+func (mgr *DEClientMGR) StartDEStream(ctx context.Context, proxyHost string, position string, tlsCfg *credentials.TransportCredentials) {
 	go func() {
 		for i := 0; ; {
 			select {
 			case <-ctx.Done():
 				return
 			case <-time.NewTimer(time.Second * (1 << i)).C:
-				if err := mgr.connectAndRecv(ctx); err != nil {
+				if err := mgr.connectAndRecv(ctx, proxyHost, position, tlsCfg); err != nil {
 					logger.Sugar().Error(err)
 					i++
 				} else {
@@ -34,12 +34,8 @@ func (mgr *DEClientMGR) StartDEStream(ctx context.Context) {
 }
 
 // will block on
-func (mgr *DEClientMGR) connectAndRecv(ctx context.Context) error {
-	tlsConfig, err := client.LoadTLSConfig("/var/certs/client.a.crt", "/var/certs/client.a.key", "/var/certs/ca.crt")
-	if err != nil {
-		return wlog.Errorf("failed to get tls config, err: %v", err)
-	}
-	conn, err := client.GetGRPCConn(config.GetENV().Proxy, &tlsConfig)
+func (mgr *DEClientMGR) connectAndRecv(ctx context.Context, proxyHost string, position string, tlsCfg *credentials.TransportCredentials) error {
+	conn, err := client.GetGRPCConn(proxyHost, tlsCfg)
 	if err != nil {
 		return wlog.Errorf("failed to get grpc connection, err: %v", err)
 
@@ -58,12 +54,12 @@ func (mgr *DEClientMGR) connectAndRecv(ctx context.Context) error {
 	proxyConn, err := RegisterDEClient(
 		pcClient,
 		foxproxy.ClientType_ClientTypePlugin,
-		config.GetENV().Position,
+		position,
 		[]*foxproxy.CoinInfo{
 			{
-				Name:      "btc",
+				Name:      "TestCoin",
 				CoinType:  foxproxy.CoinType_CoinTypealeo,
-				ChainType: foxproxy.ChainType_Bitcoin,
+				ChainType: foxproxy.ChainType_Aleo,
 			},
 		})
 	if err != nil {

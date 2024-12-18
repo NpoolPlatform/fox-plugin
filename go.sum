@@ -40,8 +40,6 @@ github.com/BurntSushi/toml v1.1.0 h1:ksErzDEI1khOiGPgpwuI7x2ebx/uXQNw7xJpn9Eq1+I
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/NpoolPlatform/go-service-framework v0.0.0-20241206101911-552f0ce6648e h1:gL/B5ufhcza8tvwo2HnHZqMGyCVBsYyx+LJkuADoqIA=
 github.com/NpoolPlatform/go-service-framework v0.0.0-20241206101911-552f0ce6648e/go.mod h1:8ZqSAAL4eLX/09HLWwDzQY0fMORy8nqHj3kwiUHEyS4=
-github.com/NpoolPlatform/message v0.0.0-20241212064321-176d5ab75352 h1:MYGh3N/gnYZ4ynQW7e0OdU2N01jirI1SLr4ScwANM8g=
-github.com/NpoolPlatform/message v0.0.0-20241212064321-176d5ab75352/go.mod h1:PxJpF0vSSOke+NJskbRBRQ2fK2K3SRe8zaEja+GxSHk=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/benbjohnson/clock v1.3.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=

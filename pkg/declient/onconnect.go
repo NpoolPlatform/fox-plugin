@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-func (mgr *DEClientMGR) StartDEStream(ctx context.Context, proxyHost string, position string, tlsCfg *credentials.TransportCredentials) {
+func (mgr *DEClientMGR) StartDEStream(ctx context.Context, proxyHost, position string, tlsCfg credentials.TransportCredentials) {
 	go func() {
 		for i := 0; ; {
 			select {
@@ -34,11 +34,10 @@ func (mgr *DEClientMGR) StartDEStream(ctx context.Context, proxyHost string, pos
 }
 
 // will block on
-func (mgr *DEClientMGR) connectAndRecv(ctx context.Context, proxyHost string, position string, tlsCfg *credentials.TransportCredentials) error {
+func (mgr *DEClientMGR) connectAndRecv(ctx context.Context, proxyHost, position string, tlsCfg credentials.TransportCredentials) error {
 	conn, err := client.GetGRPCConn(proxyHost, tlsCfg)
 	if err != nil {
 		return wlog.Errorf("failed to get grpc connection, err: %v", err)
-
 	}
 	defer conn.Close()
 

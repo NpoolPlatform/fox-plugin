@@ -21,7 +21,7 @@ var (
 )
 
 // GetGRPCConn get grpc client conn
-func GetGRPCConn(conn string, tlsCfg *credentials.TransportCredentials) (*grpc.ClientConn, error) {
+func GetGRPCConn(conn string, tlsCfg credentials.TransportCredentials) (*grpc.ClientConn, error) {
 	if conn == "" {
 		return nil, fmt.Errorf("conn is empty")
 	}
@@ -38,7 +38,7 @@ func GetGRPCConn(conn string, tlsCfg *credentials.TransportCredentials) (*grpc.C
 	return getConn(conn, tlsCfg)
 }
 
-func getConn(target string, tlsCfg *credentials.TransportCredentials) (*grpc.ClientConn, error) {
+func getConn(target string, tlsCfg credentials.TransportCredentials) (*grpc.ClientConn, error) {
 	rlk.Lock()
 	defer rlk.Unlock()
 
@@ -47,7 +47,7 @@ func getConn(target string, tlsCfg *credentials.TransportCredentials) (*grpc.Cli
 
 	secureOpt := grpc.WithInsecure()
 	if tlsCfg != nil {
-		secureOpt = grpc.WithTransportCredentials(*tlsCfg)
+		secureOpt = grpc.WithTransportCredentials(tlsCfg)
 	}
 
 	conn, err := grpc.DialContext(

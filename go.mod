@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/NpoolPlatform/go-service-framework v0.0.0-20241206101911-552f0ce6648e
-	github.com/NpoolPlatform/message v0.0.0-20241212064321-176d5ab75352
+	github.com/NpoolPlatform/message v0.0.0-20241220081027-3489d3b65e79
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/google/uuid v1.3.0
 	github.com/spf13/viper v1.12.0
@@ -12,8 +12,6 @@ require (
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
 	google.golang.org/grpc v1.55.0
 )
-
-replace github.com/NpoolPlatform/message => ../message
 
 require (
 	github.com/benbjohnson/clock v1.3.0 // indirect

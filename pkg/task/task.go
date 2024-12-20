@@ -50,7 +50,7 @@ func Run(ctx context.Context) {
 	if err != nil {
 		panic(wlog.Errorf("failed to get tls config, err: %v", err))
 	}
-	go declient.GetDEClientMGR().StartDEStream(ctx, config.GetENV().Proxy, config.GetENV().Position, &tlsConfig)
-	go declient.GetDEClientMGR().StartDEStream(ctx, config.GetENV().Proxy, config.GetENV().Position, &tlsConfig)
+	go declient.GetDEClientMGR().StartDEStream(ctx, config.GetENV().Proxy, config.GetENV().Position, tlsConfig)
+	go declient.GetDEClientMGR().StartDEStream(ctx, config.GetENV().Proxy, config.GetENV().Position, tlsConfig)
 	go RegisterCoin(ctx)
 }

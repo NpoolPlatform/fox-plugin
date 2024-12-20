@@ -1,6 +1,8 @@
 package declient
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -9,6 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// nolint: revive
 type DEClientMGR struct {
 	recvChannel sync.Map
 	connections []*DEClient
@@ -67,7 +70,7 @@ func (mgr *DEClientMGR) SendMsg(
 	msgType foxproxy.MsgType,
 	connID *string,
 	msg *MsgInfo,
-	recvChannel *chan MsgInfo,
+	recvChannel chan MsgInfo,
 ) error {
 	var conn *DEClient
 	conns := mgr.connections
@@ -99,7 +102,7 @@ func (mgr *DEClientMGR) sendMsg(
 	msgID *string,
 	msg *MsgInfo,
 	conn *DEClient,
-	recvChannel *chan MsgInfo,
+	recvChannel chan MsgInfo,
 ) error {
 	if conn == nil {
 		return fmt.Errorf("connection is nil")
@@ -115,7 +118,7 @@ func (mgr *DEClientMGR) sendMsg(
 	}
 
 	if recvChannel != nil {
-		mgr.recvChannel.Store(*msgID, *recvChannel)
+		mgr.recvChannel.Store(*msgID, recvChannel)
 	}
 
 	if msg.StatusCode == nil {
@@ -132,6 +135,44 @@ func (mgr *DEClientMGR) sendMsg(
 	})
 }
 
+func (mgr *DEClientMGR) SendAndRecv(ctx context.Context, msgType foxproxy.MsgType, req, resp interface{}) (*foxproxy.StatusCode, error) {
+	inPayload, err := json.Marshal(req)
+	if err != nil {
+		return foxproxy.StatusCode_StatusCodeMarshalErr.Enum(), err
+	}
+
+	recvChannel := make(chan MsgInfo)
+	defer close(recvChannel)
+
+	err = mgr.SendMsg(msgType, nil, &MsgInfo{Payload: inPayload}, recvChannel)
+	if err != nil {
+		return foxproxy.StatusCode_StatusCodeFailed.Enum(), err
+	}
+
+	var recvMsg MsgInfo
+	select {
+	case <-ctx.Done():
+		return foxproxy.StatusCode_StatusCodeFailed.Enum(), ctx.Err()
+	case <-time.NewTimer(time.Second * 3).C:
+		return foxproxy.StatusCode_StatusCodeFailed.Enum(), fmt.Errorf("timeout for recv response")
+	case recvMsg = <-recvChannel:
+	}
+
+	if recvMsg.StatusCode.String() != foxproxy.StatusCode_StatusCodeSuccess.String() {
+		if recvMsg.StatusMsg == nil {
+			return recvMsg.StatusCode, fmt.Errorf("")
+		}
+		return recvMsg.StatusCode, fmt.Errorf(*recvMsg.StatusMsg)
+	}
+
+	err = json.Unmarshal(recvMsg.Payload, resp)
+	if err != nil {
+		return foxproxy.StatusCode_StatusCodeUnmarshalErr.Enum(), err
+	}
+
+	return foxproxy.StatusCode_StatusCodeSuccess.Enum(), nil
+}
+
 func (mgr *DEClientMGR) DealDataElement(data *foxproxy.DataElement) {
 	if ch, ok := mgr.recvChannel.LoadAndDelete(data.MsgID); ok {
 		select {
@@ -143,15 +184,4 @@ func (mgr *DEClientMGR) DealDataElement(data *foxproxy.DataElement) {
 		}:
 		}
 	}
-
-	// handler, err := GetDEHandlerMGR().GetDEHandler(data.MsgType)
-	// if err != nil {
-	// 	logger.Sugar().Error(err)
-	// 	return
-	// }
-
-	// err = handler(data)
-	// if err != nil {
-	// 	logger.Sugar().Error(err)
-	// }
 }

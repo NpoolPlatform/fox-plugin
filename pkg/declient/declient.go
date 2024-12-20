@@ -110,7 +110,10 @@ func (conn *DEClient) Close() {
 		for _, onClose := range conn.onCloseFuncs {
 			onClose(conn)
 		}
-		conn.FoxProxyStream_DEStreamClient.CloseSend()
+		if err := conn.FoxProxyStream_DEStreamClient.CloseSend(); err != nil {
+			logger.Sugar().Warn(err)
+		}
+
 		conn.cancel()
 		_, ok := <-conn.ctx.Done()
 		logger.Sugar().Warn(ok)

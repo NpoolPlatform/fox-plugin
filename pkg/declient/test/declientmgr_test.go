@@ -22,7 +22,10 @@ const grpcPort = 50023
 var serverStream foxproxy.FoxProxyStream_DEStreamServer
 
 func (s *Server) DEStream(stream foxproxy.FoxProxyStream_DEStreamServer) error {
-	RegisterDEServer(stream)
+	err := RegisterDEServer(stream)
+	if err != nil {
+		return err
+	}
 	serverStream = stream
 	<-serverStream.Context().Done()
 	return nil
@@ -99,7 +102,11 @@ func RegisterDEServer(stream foxproxy.FoxProxyStream_DEStreamServer) error {
 }
 
 func TestDEClientMGR(t *testing.T) {
-	logger.Init(logger.DebugLevel, "./a.log")
+	err := logger.Init(logger.DebugLevel, "./a.log")
+	if !assert.Nil(t, err) {
+		return
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go MockOnServer(ctx, grpcPort)
@@ -117,7 +124,7 @@ func TestDEClientMGR(t *testing.T) {
 	}
 
 	payload := []byte("sssssss")
-	err := mgr.SendMsg(foxproxy.MsgType_MsgTypeDefault, nil, &declient.MsgInfo{
+	err = mgr.SendMsg(foxproxy.MsgType_MsgTypeDefault, nil, &declient.MsgInfo{
 		Payload: payload,
 	}, nil)
 	if !assert.Nil(t, err) {

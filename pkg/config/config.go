@@ -64,15 +64,9 @@ func GetInt(key string) int {
 var global *ENVInfo
 
 type ENVInfo struct {
-	LocalWalletAddr  string
-	PublicWalletAddr string
 	Proxy            string
-	SyncInterval     int64
-	Contract         string
-	LogDir           string
-	LogLevel         string
-	WanIP            string
 	Position         string
+	ConfigPath       string
 	BuildChainServer string
 }
 

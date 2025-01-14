@@ -3,9 +3,6 @@ package endpoints
 import (
 	"errors"
 	"math/rand"
-	"strings"
-
-	"github.com/NpoolPlatform/fox-plugin/pkg/config"
 )
 
 var (
@@ -24,18 +21,9 @@ type Manager struct {
 	publicAddrs []string
 }
 
-func NewManager() (*Manager, error) {
-	localWalletAddrs := config.GetENV().LocalWalletAddr
-	publicWalletAddrs := config.GetENV().PublicWalletAddr
-
-	localWalletAddrs = strings.Trim(localWalletAddrs, " ")
-	publicWalletAddrs = strings.Trim(publicWalletAddrs, " ")
-
-	_localAddrs := strings.Split(localWalletAddrs, AddrSplitter)
+func NewManager(_localAddrs, _publicAddrs []string) (*Manager, error) {
 	localAddrs := []string{}
-	_publicAddrs := strings.Split(publicWalletAddrs, AddrSplitter)
 	publicAddrs := []string{}
-
 	for i := range _localAddrs {
 		if len(_localAddrs[i]) > 0 {
 			localAddrs = append(localAddrs, _localAddrs[i])

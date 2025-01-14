@@ -16,20 +16,16 @@ const (
 )
 
 var (
-	localWalletAddr  string
-	publicWalletAddr string
 	proxyAddress     string
-	syncInterval     int64
-	contract         string
 	logDir           string
 	logLevel         string
-	wanIP            string
 	position         string
+	configPath       string
 	buildChainServer string
 )
 
 func main() {
-	commands := cli.Commands{runCmd}
+	commands := cli.Commands{runCmd, listCmd}
 	description := fmt.Sprintf(
 		"%v service cli\nFor help on any individual command run <%v COMMAND -h>\n",
 		serviceName,
@@ -39,7 +35,7 @@ func main() {
 	banner.NewColorFigure(serviceName, "", "green", true).Print()
 	vsion, err := version.GetVersion()
 	if err != nil {
-		panic(fmt.Errorf("fail to get version: %v", err))
+		panic(fmt.Sprintf("fail to get version: %v", err))
 	}
 
 	app := &cli.App{

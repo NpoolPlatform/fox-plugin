@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/NpoolPlatform/fox-plugin/pkg/client"
+	"github.com/NpoolPlatform/fox-plugin/pkg/coins/handler"
 	"github.com/NpoolPlatform/fox-plugin/pkg/config"
 	"github.com/NpoolPlatform/fox-plugin/pkg/declient"
 	"github.com/NpoolPlatform/go-service-framework/pkg/logger"
 	"github.com/NpoolPlatform/go-service-framework/pkg/wlog"
-	v1 "github.com/NpoolPlatform/message/npool/basetypes/v1"
 	"github.com/NpoolPlatform/message/npool/foxproxy"
 )
 
@@ -21,23 +21,11 @@ func RegisterCoin(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-time.NewTimer(time.Second * 3).C:
-			in := &foxproxy.RegisterCoinInfo{
-				Name:                "TestCoin",
-				Unit:                "TC",
-				ENV:                 "test",
-				ChainType:           foxproxy.ChainType_Aleo,
-				ChainNativeUnit:     "TC",
-				ChainAtomicUnit:     "tTC",
-				ChainUnitExp:        6,
-				GasType:             v1.GasType_FixedGas,
-				ChainID:             "ROCK",
-				ChainNickname:       "TestCoin",
-				ChainNativeCoinName: "TestCoin",
-			}
+			in := handler.GetTokenMGR().GetTokenRegisterCoinInfos()
 			out := &foxproxy.EmptyResponse{}
-			statusCode, err := mgr.SendAndRecv(context.Background(), foxproxy.MsgType_MsgTypeRegisterCoin, in, out)
+			err := mgr.SendAndRecv(context.Background(), foxproxy.MsgType_MsgTypeRegisterCoin, in, out)
 			if err != nil {
-				logger.Sugar().Error(statusCode, err)
+				logger.Sugar().Error(err)
 				continue
 			}
 			return
@@ -50,7 +38,16 @@ func Run(ctx context.Context) {
 	if err != nil {
 		panic(wlog.Errorf("failed to get tls config, err: %v", err))
 	}
-	go declient.GetDEClientMGR().StartDEStream(ctx, config.GetENV().Proxy, config.GetENV().Position, tlsConfig)
-	go declient.GetDEClientMGR().StartDEStream(ctx, config.GetENV().Proxy, config.GetENV().Position, tlsConfig)
+	go declient.GetDEClientMGR().StartDEStream(
+		ctx,
+		foxproxy.ClientType_ClientTypePlugin,
+		config.GetENV().Proxy,
+		config.GetENV().Position,
+		tlsConfig)
+	go declient.GetDEClientMGR().StartDEStream(ctx,
+		foxproxy.ClientType_ClientTypePlugin,
+		config.GetENV().Proxy,
+		config.GetENV().Position,
+		tlsConfig)
 	go RegisterCoin(ctx)
 }

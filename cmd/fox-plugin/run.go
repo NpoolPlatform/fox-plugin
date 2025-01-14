@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -16,6 +15,10 @@ import (
 	"github.com/NpoolPlatform/go-service-framework/pkg/logger"
 	cli "github.com/urfave/cli/v2"
 	"go.uber.org/zap"
+
+	// register coins handler
+	"github.com/NpoolPlatform/fox-plugin/pkg/coins/handler"
+	_ "github.com/NpoolPlatform/fox-plugin/pkg/coins/register"
 )
 
 func init() {
@@ -32,46 +35,30 @@ var runCmd = &cli.Command{
 	Before: func(ctx *cli.Context) error {
 		// TODO: elegent set or get env
 		config.SetENV(&config.ENVInfo{
-			LocalWalletAddr:  localWalletAddr,
-			PublicWalletAddr: publicWalletAddr,
 			Proxy:            proxyAddress,
-			SyncInterval:     syncInterval,
-			Contract:         contract,
-			LogDir:           logDir,
-			LogLevel:         logLevel,
-			WanIP:            wanIP,
 			Position:         position,
+			ConfigPath:       configPath,
 			BuildChainServer: buildChainServer,
 		})
-		err := logger.Init(
-			logger.DebugLevel,
-			filepath.Join(config.GetENV().LogDir, "fox-plugin.log"),
-			zap.AddCallerSkip(1),
-		)
+
+		err := os.MkdirAll(logDir, 0755) //nolint
 		if err != nil {
-			panic(fmt.Errorf("fail to init logger: %v", err))
+			panic(fmt.Sprintf("Fail to create log dir %v: %v", logDir, err))
 		}
+
+		err = logger.Init(logLevel, fmt.Sprintf("%v/%v.log", logDir, serviceName), zap.AddCallerSkip(1))
+		if err != nil {
+			panic(fmt.Sprintf("Fail to init logger: %v", err))
+		}
+
+		err = handler.GetTokenMGR().RegisterDepTokenInfosFromYaml(configPath)
+		if err != nil {
+			panic(fmt.Sprintf("Fail to register tokens: %v", err))
+		}
+
 		return nil
 	},
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:        "local-wallet",
-			Aliases:     []string{"lw"},
-			Usage:       "wallet address of local",
-			EnvVars:     []string{"ENV_COIN_LOCAL_API"},
-			Required:    true,
-			Value:       "",
-			Destination: &localWalletAddr,
-		},
-		&cli.StringFlag{
-			Name:        "public-wallet",
-			Aliases:     []string{"pw"},
-			Usage:       "wallet address of public",
-			EnvVars:     []string{"ENV_COIN_PUBLIC_API"},
-			Required:    true,
-			Value:       "",
-			Destination: &publicWalletAddr,
-		},
 		// proxy address
 		&cli.StringFlag{
 			Name:        "proxy",
@@ -81,24 +68,6 @@ var runCmd = &cli.Command{
 			Required:    true,
 			Value:       "",
 			Destination: &proxyAddress,
-		},
-		// sync interval
-		&cli.Int64Flag{
-			Name:        "sync-interval",
-			Aliases:     []string{"si"},
-			Usage:       "interval seconds of sync transaction on chain status",
-			EnvVars:     []string{"ENV_SYNC_INTERVAL"},
-			Value:       0,
-			Destination: &syncInterval,
-		},
-		// contract id
-		&cli.StringFlag{
-			Name:        "contract",
-			Aliases:     []string{"c"},
-			Usage:       "id of contract",
-			EnvVars:     []string{"ENV_CONTRACT"},
-			Value:       "",
-			Destination: &contract,
 		},
 		// log level
 		&cli.StringFlag{
@@ -120,16 +89,6 @@ var runCmd = &cli.Command{
 			DefaultText: "/var/log",
 			Destination: &logDir,
 		},
-		// wan ip
-		&cli.StringFlag{
-			Name:        "wan-ip",
-			Aliases:     []string{"w"},
-			Usage:       "wan ip",
-			EnvVars:     []string{"ENV_WAN_IP"},
-			Required:    true,
-			Value:       "",
-			Destination: &wanIP,
-		},
 		// position
 		&cli.StringFlag{
 			Name:        "position",
@@ -140,7 +99,17 @@ var runCmd = &cli.Command{
 			Value:       "",
 			Destination: &position,
 		},
-		// position
+		// config path
+		&cli.StringFlag{
+			Name:        "configPath",
+			Aliases:     []string{"c"},
+			Usage:       "configPath",
+			EnvVars:     []string{"ENV_CONFIG_PATH"},
+			Required:    false,
+			Value:       "./tokens.yaml",
+			Destination: &configPath,
+		},
+		// bc-server
 		&cli.StringFlag{
 			Name:        "build-chain-server",
 			Aliases:     []string{"b"},
@@ -153,8 +122,7 @@ var runCmd = &cli.Command{
 	},
 	Action: func(c *cli.Context) error {
 		logger.Sugar().Infof(
-			"run plugin wanIP: %v, Position %v",
-			config.GetENV().WanIP,
+			"run plugin Position %v",
 			config.GetENV().Position,
 		)
 

@@ -7,6 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/NpoolPlatform/fox-plugin/pkg/coins/handler"
+	"github.com/NpoolPlatform/fox-plugin/pkg/declient/types"
+	"github.com/NpoolPlatform/go-service-framework/pkg/logger"
+	"github.com/NpoolPlatform/go-service-framework/pkg/wlog"
 	"github.com/NpoolPlatform/message/npool/foxproxy"
 	"github.com/google/uuid"
 )
@@ -42,12 +46,6 @@ func (mgr *DEClientMGR) GetClientInfos() []*foxproxy.ClientInfo {
 	return ret
 }
 
-type MsgInfo struct {
-	Payload    []byte
-	StatusCode *foxproxy.StatusCode
-	StatusMsg  *string
-}
-
 // delete conn from connectionMGR
 func (mgr *DEClientMGR) deleteConnection(conn *DEClient) {
 	for i := 0; i < len(mgr.connections); i++ {
@@ -69,8 +67,8 @@ func (mgr *DEClientMGR) CloseAll() {
 func (mgr *DEClientMGR) SendMsg(
 	msgType foxproxy.MsgType,
 	connID *string,
-	msg *MsgInfo,
-	recvChannel chan MsgInfo,
+	msg *types.MsgInfo,
+	recvChannel chan types.MsgInfo,
 ) error {
 	var conn *DEClient
 	conns := mgr.connections
@@ -97,19 +95,42 @@ func (mgr *DEClientMGR) SendMsg(
 
 // if recvChannel is not nil, recv response will send to it
 // default value of statusCode is success
+func (mgr *DEClientMGR) SendMsgWithConnID(
+	msgType foxproxy.MsgType,
+	connID string,
+	msgID *string,
+	msg *types.MsgInfo,
+	recvChannel chan types.MsgInfo,
+) error {
+	var conn *DEClient
+	for _, _conn := range mgr.connections {
+		if _conn.ID == connID {
+			conn = _conn
+			break
+		}
+	}
+	if conn == nil {
+		return fmt.Errorf("cannot find any sider,for %v", connID)
+	}
+
+	return mgr.sendMsg(msgType, msgID, msg, conn, recvChannel)
+}
+
+// if recvChannel is not nil, recv response will send to it
+// default value of statusCode is success
 func (mgr *DEClientMGR) sendMsg(
 	msgType foxproxy.MsgType,
 	msgID *string,
-	msg *MsgInfo,
+	msg *types.MsgInfo,
 	conn *DEClient,
-	recvChannel chan MsgInfo,
+	recvChannel chan types.MsgInfo,
 ) error {
 	if conn == nil {
 		return fmt.Errorf("connection is nil")
 	}
 
 	if msg == nil {
-		msg = &MsgInfo{}
+		msg = &types.MsgInfo{}
 	}
 
 	if msgID == nil {
@@ -121,67 +142,88 @@ func (mgr *DEClientMGR) sendMsg(
 		mgr.recvChannel.Store(*msgID, recvChannel)
 	}
 
-	if msg.StatusCode == nil {
-		msg.StatusCode = foxproxy.StatusCode_StatusCodeSuccess.Enum()
-	}
-
 	return conn.Send(&foxproxy.DataElement{
-		ConnectID:  conn.ID,
-		MsgID:      *msgID,
-		MsgType:    msgType,
-		Payload:    msg.Payload,
-		StatusCode: *msg.StatusCode,
-		StatusMsg:  msg.StatusMsg,
+		ConnectID: conn.ID,
+		MsgID:     *msgID,
+		MsgType:   msgType,
+		Payload:   msg.Payload,
+		ErrMsg:    msg.ErrMsg,
 	})
 }
 
-func (mgr *DEClientMGR) SendAndRecv(ctx context.Context, msgType foxproxy.MsgType, req, resp interface{}) (*foxproxy.StatusCode, error) {
-	inPayload, err := json.Marshal(req)
-	if err != nil {
-		return foxproxy.StatusCode_StatusCodeMarshalErr.Enum(), err
-	}
-
-	recvChannel := make(chan MsgInfo)
+func (mgr *DEClientMGR) SendAndRecvRaw(ctx context.Context, msgType foxproxy.MsgType, inPayload []byte) ([]byte, error) {
+	recvChannel := make(chan types.MsgInfo)
 	defer close(recvChannel)
 
-	err = mgr.SendMsg(msgType, nil, &MsgInfo{Payload: inPayload}, recvChannel)
+	err := mgr.SendMsg(msgType, nil, &types.MsgInfo{Payload: inPayload}, recvChannel)
 	if err != nil {
-		return foxproxy.StatusCode_StatusCodeFailed.Enum(), err
+		return nil, wlog.WrapError(err)
 	}
 
-	var recvMsg MsgInfo
+	var recvMsg types.MsgInfo
 	select {
 	case <-ctx.Done():
-		return foxproxy.StatusCode_StatusCodeFailed.Enum(), ctx.Err()
+		return nil, wlog.WrapError(ctx.Err())
 	case <-time.NewTimer(time.Second * 3).C:
-		return foxproxy.StatusCode_StatusCodeFailed.Enum(), fmt.Errorf("timeout for recv response")
+		return nil, wlog.Errorf("timeout for recv response")
 	case recvMsg = <-recvChannel:
 	}
 
-	if recvMsg.StatusCode.String() != foxproxy.StatusCode_StatusCodeSuccess.String() {
-		if recvMsg.StatusMsg == nil {
-			return recvMsg.StatusCode, fmt.Errorf("")
-		}
-		return recvMsg.StatusCode, fmt.Errorf(*recvMsg.StatusMsg)
+	if recvMsg.ErrMsg != nil && *recvMsg.ErrMsg != "" {
+		return nil, wlog.Errorf(*recvMsg.ErrMsg)
 	}
+	return recvMsg.Payload, nil
+}
 
-	err = json.Unmarshal(recvMsg.Payload, resp)
+func (mgr *DEClientMGR) SendAndRecv(ctx context.Context, msgType foxproxy.MsgType, req, resp interface{}) error {
+	inPayload, err := json.Marshal(req)
 	if err != nil {
-		return foxproxy.StatusCode_StatusCodeUnmarshalErr.Enum(), err
+		return wlog.WrapError(err)
 	}
 
-	return foxproxy.StatusCode_StatusCodeSuccess.Enum(), nil
+	outPayload, err := mgr.SendAndRecvRaw(ctx, msgType, inPayload)
+	if err != nil {
+		return wlog.WrapError(err)
+	}
+
+	err = json.Unmarshal(outPayload, resp)
+	if err != nil {
+		return wlog.WrapError(err)
+	}
+
+	return nil
 }
 
 func (mgr *DEClientMGR) DealDataElement(data *foxproxy.DataElement) {
 	if ch, ok := mgr.recvChannel.LoadAndDelete(data.MsgID); ok {
 		select {
 		case <-time.NewTimer(time.Second).C:
-		case ch.(chan MsgInfo) <- MsgInfo{
-			Payload:    data.Payload,
-			StatusCode: &data.StatusCode,
-			StatusMsg:  data.StatusMsg,
+		case ch.(chan types.MsgInfo) <- types.MsgInfo{
+			Payload: data.Payload,
+			ErrMsg:  data.ErrMsg,
 		}:
 		}
+	}
+
+	var resp *types.MsgInfo
+	h, err := handler.GetTokenMGR().GetDEHandler(data.MsgType)
+	if err != nil {
+		logger.Sugar().Error(err)
+		statusMsg := err.Error()
+		resp = &types.MsgInfo{
+			ErrMsg: &statusMsg,
+		}
+	} else {
+		resp = h(context.Background(), data)
+	}
+
+	if resp == nil {
+		return
+	}
+
+	err = mgr.SendMsgWithConnID(foxproxy.MsgType_MsgTypeResponse, data.ConnectID, &data.MsgID, resp, nil)
+	if err != nil {
+		logger.Sugar().Error(err)
+		return
 	}
 }

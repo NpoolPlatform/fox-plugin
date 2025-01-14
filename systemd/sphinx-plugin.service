@@ -1,0 +1,15 @@
+[Unit]
+Description=fox Plugin
+After=network.target
+
+[Service]
+Environment="ENV_COIN_LOCAL_API="
+ExecStart=/opt/fox-plugin/fox-plugin run
+ExecStop=/bin/kill -s QUIT $MAINPID
+Restart=always
+RestartSec=30
+TimeoutSec=infinity
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

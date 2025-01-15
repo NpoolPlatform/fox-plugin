@@ -9,10 +9,11 @@ import (
 )
 
 type DEHandlerFunc func(ctx context.Context, data *foxproxy.DataElement) *types.MsgInfo
+type TxHandlerFunc func(ctx context.Context, data *foxproxy.DataElement) *types.MsgInfo
 
 type TokenMGR struct {
-	msgHandlers   map[foxproxy.MsgType]map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc
-	txHandlers    map[foxproxy.TransactionState]map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc
+	deHandlers    map[foxproxy.MsgType]map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc
+	txHandlers    map[foxproxy.TransactionState]map[foxproxy.ChainType]map[foxproxy.CoinType]TxHandlerFunc
 	tokenInfos    map[string]*coins.TokenInfo    // from code register
 	depTokenInfos map[string]*coins.DepTokenInfo // from deployer
 }
@@ -28,8 +29,8 @@ func GetTokenMGR() *TokenMGR {
 
 func newTokenMGR() *TokenMGR {
 	return &TokenMGR{
-		msgHandlers:   make(map[foxproxy.MsgType]map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc),
-		txHandlers:    make(map[foxproxy.TransactionState]map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc),
+		deHandlers:    make(map[foxproxy.MsgType]map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc),
+		txHandlers:    make(map[foxproxy.TransactionState]map[foxproxy.ChainType]map[foxproxy.CoinType]TxHandlerFunc),
 		tokenInfos:    make(map[string]*coins.TokenInfo),
 		depTokenInfos: make(map[string]*coins.DepTokenInfo),
 	}

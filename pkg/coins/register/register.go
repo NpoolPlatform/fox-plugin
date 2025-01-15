@@ -16,14 +16,14 @@ func init() {
 	if err := mgr.RegisterTokenInfo(sol.SolanaToken); err != nil {
 		panic(err)
 	}
-	mgr.RegisterPluginHandler(
+	mgr.RegisterPluginDEHandler(
 		foxproxy.MsgType_MsgTypeGetBalance,
 		sol.SolanaToken,
 		&foxproxy.GetBalanceRequest{},
 		func(ctx context.Context, coinInfo *foxproxy.CoinInfo, info *coins.TokenInfo, req interface{}) (interface{}, error) {
 			return plugin.WalletBalance(ctx, info, req.(*foxproxy.GetBalanceRequest))
 		})
-	mgr.RegisterSignHandler(
+	mgr.RegisterSignDEHandler(
 		foxproxy.MsgType_MsgTypeCreateWallet,
 		sol.SolanaToken,
 		&foxproxy.CreateWalletRequest{},

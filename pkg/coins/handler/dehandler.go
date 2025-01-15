@@ -11,7 +11,7 @@ import (
 	"github.com/NpoolPlatform/message/npool/foxproxy"
 )
 
-func (mgr *TokenMGR) RegisterPluginHandler(
+func (mgr *TokenMGR) RegisterPluginDEHandler(
 	msgType foxproxy.MsgType,
 	info *coins.TokenInfo,
 	in interface{},
@@ -71,16 +71,16 @@ func (mgr *TokenMGR) RegisterPluginHandler(
 		}
 	}
 
-	if _, ok := mgr.msgHandlers[msgType]; !ok {
-		mgr.msgHandlers[msgType] = make(map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc)
+	if _, ok := mgr.deHandlers[msgType]; !ok {
+		mgr.deHandlers[msgType] = make(map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc)
 	}
-	if _, ok := mgr.msgHandlers[msgType][info.ChainType]; !ok {
-		mgr.msgHandlers[msgType][info.ChainType] = make(map[foxproxy.CoinType]DEHandlerFunc)
+	if _, ok := mgr.deHandlers[msgType][info.ChainType]; !ok {
+		mgr.deHandlers[msgType][info.ChainType] = make(map[foxproxy.CoinType]DEHandlerFunc)
 	}
-	mgr.msgHandlers[msgType][info.ChainType][info.CoinType] = deHandler
+	mgr.deHandlers[msgType][info.ChainType][info.CoinType] = deHandler
 }
 
-func (mgr *TokenMGR) RegisterSignHandler(
+func (mgr *TokenMGR) RegisterSignDEHandler(
 	msgType foxproxy.MsgType,
 	info *coins.TokenInfo,
 	in interface{},
@@ -140,13 +140,13 @@ func (mgr *TokenMGR) RegisterSignHandler(
 		}
 	}
 
-	if _, ok := mgr.msgHandlers[msgType]; !ok {
-		mgr.msgHandlers[msgType] = make(map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc)
+	if _, ok := mgr.deHandlers[msgType]; !ok {
+		mgr.deHandlers[msgType] = make(map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc)
 	}
-	if _, ok := mgr.msgHandlers[msgType][info.ChainType]; !ok {
-		mgr.msgHandlers[msgType][info.ChainType] = make(map[foxproxy.CoinType]DEHandlerFunc)
+	if _, ok := mgr.deHandlers[msgType][info.ChainType]; !ok {
+		mgr.deHandlers[msgType][info.ChainType] = make(map[foxproxy.CoinType]DEHandlerFunc)
 	}
-	mgr.msgHandlers[msgType][info.ChainType][info.CoinType] = deHandler
+	mgr.deHandlers[msgType][info.ChainType][info.CoinType] = deHandler
 }
 
 func (mgr *TokenMGR) GetDEHandler(msgType foxproxy.MsgType) (DEHandlerFunc, error) {
@@ -159,7 +159,7 @@ func (mgr *TokenMGR) GetDEHandler(msgType foxproxy.MsgType) (DEHandlerFunc, erro
 			}
 		}
 
-		h, err := mgr.GetMsgHandler(msgType, data.CoinInfo.ChainType, data.CoinInfo.CoinType)
+		h, err := mgr.getDEHandler(msgType, data.CoinInfo.ChainType, data.CoinInfo.CoinType)
 		if err != nil {
 			statusMsg := err.Error()
 			return &types.MsgInfo{
@@ -171,16 +171,16 @@ func (mgr *TokenMGR) GetDEHandler(msgType foxproxy.MsgType) (DEHandlerFunc, erro
 	}, nil
 }
 
-func (mgr *TokenMGR) GetMsgHandler(msgType foxproxy.MsgType, chainType foxproxy.ChainType, coinType foxproxy.CoinType) (DEHandlerFunc, error) {
-	_, ok := mgr.msgHandlers[msgType]
+func (mgr *TokenMGR) getDEHandler(msgType foxproxy.MsgType, chainType foxproxy.ChainType, coinType foxproxy.CoinType) (DEHandlerFunc, error) {
+	_, ok := mgr.deHandlers[msgType]
 	if !ok {
 		return nil, fmt.Errorf("have no handler for msgtype: %v", msgType)
 	}
-	_, ok = mgr.msgHandlers[msgType][chainType]
+	_, ok = mgr.deHandlers[msgType][chainType]
 	if !ok {
 		return nil, fmt.Errorf("have no handler for msgtype: %v - chaintype: %v", msgType, chainType)
 	}
-	h, ok := mgr.msgHandlers[msgType][chainType][coinType]
+	h, ok := mgr.deHandlers[msgType][chainType][coinType]
 	if !ok {
 		return nil, fmt.Errorf("have no handler for msgtype: %v - chaintype: %v, cointype: %v", msgType, chainType, coinType)
 	}

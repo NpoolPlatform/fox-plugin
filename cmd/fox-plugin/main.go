@@ -15,15 +15,6 @@ const (
 	usageText   = "fox Plugin Service"
 )
 
-var (
-	proxyAddress     string
-	logDir           string
-	logLevel         string
-	position         string
-	configPath       string
-	buildChainServer string
-)
-
 func main() {
 	commands := cli.Commands{runCmd, listCmd}
 	description := fmt.Sprintf(

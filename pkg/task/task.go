@@ -23,7 +23,7 @@ func RegisterCoin(ctx context.Context) {
 		case <-time.NewTimer(time.Second * 3).C:
 			in := handler.GetTokenMGR().GetTokenRegisterCoinInfos()
 			out := &foxproxy.EmptyResponse{}
-			err := mgr.SendAndRecv(context.Background(), foxproxy.MsgType_MsgTypeRegisterCoin, in, out)
+			err := mgr.SendAndRecv(ctx, foxproxy.MsgType_MsgTypeRegisterCoin, in, out)
 			if err != nil {
 				logger.Sugar().Error(err)
 				continue
@@ -38,16 +38,15 @@ func Run(ctx context.Context) {
 	if err != nil {
 		panic(wlog.Errorf("failed to get tls config, err: %v", err))
 	}
-	go declient.GetDEClientMGR().StartDEStream(
-		ctx,
-		foxproxy.ClientType_ClientTypePlugin,
-		config.GetENV().Proxy,
-		config.GetENV().Position,
-		tlsConfig)
-	go declient.GetDEClientMGR().StartDEStream(ctx,
-		foxproxy.ClientType_ClientTypePlugin,
-		config.GetENV().Proxy,
-		config.GetENV().Position,
-		tlsConfig)
+
+	for i := 0; i < 2; i++ {
+		go declient.GetDEClientMGR().StartDEStream(
+			ctx,
+			foxproxy.ClientType_ClientTypePlugin,
+			config.GetENV().Proxy,
+			config.GetENV().Position,
+			tlsConfig)
+	}
+
 	go RegisterCoin(ctx)
 }

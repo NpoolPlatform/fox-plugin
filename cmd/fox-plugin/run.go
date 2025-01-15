@@ -25,6 +25,17 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
+var (
+	proxyAddress     string
+	logDir           string
+	logLevel         string
+	position         string
+	configPath       string
+	buildChainServer string
+	taskInterval     uint
+	taskWorkerNum    uint
+)
+
 var runCmd = &cli.Command{
 	Name:    "run",
 	Aliases: []string{"r"},
@@ -39,6 +50,8 @@ var runCmd = &cli.Command{
 			Position:         position,
 			ConfigPath:       configPath,
 			BuildChainServer: buildChainServer,
+			TaskInterval:     taskInterval,
+			TaskWorkerNum:    taskWorkerNum,
 		})
 
 		err := os.MkdirAll(logDir, 0755) //nolint
@@ -118,6 +131,26 @@ var runCmd = &cli.Command{
 			Required:    false,
 			Value:       "",
 			Destination: &buildChainServer,
+		},
+		// task-interval
+		&cli.UintFlag{
+			Name:        "task-interval",
+			Aliases:     []string{"ti"},
+			Usage:       "task interval",
+			EnvVars:     []string{"ENV_TASK_INTERVAL"},
+			Required:    false,
+			Value:       10,
+			Destination: &taskInterval,
+		},
+		// task-interval
+		&cli.UintFlag{
+			Name:        "task-worker-num",
+			Aliases:     []string{"twn"},
+			Usage:       "task worker num",
+			EnvVars:     []string{"ENV_TASK_WORKER_NUM"},
+			Required:    false,
+			Value:       5,
+			Destination: &taskWorkerNum,
 		},
 	},
 	Action: func(c *cli.Context) error {

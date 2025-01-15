@@ -27,8 +27,8 @@ var listCmd = &cli.Command{
 		fmt.Println("################### Modifyable fields for token ##############")
 		fmt.Println(utils.PrettyStruct(coins.GetModifiableFileds()))
 		fmt.Println("Tips:")
-		fmt.Println("(1) If ENV is main, only [TaskInterval LocalAPIs PublicAPIs] can be modify")
-		fmt.Println("(2) The unit of BlockTime and TaskInterval is second")
+		fmt.Println("(1) If ENV is main, only [LocalAPIs PublicAPIs] can be modify")
+		fmt.Println("(2) The unit of BlockTime is second")
 		fmt.Println("(3) LocalAPIs and PublicAPIs must be provied by deployer")
 		return nil
 	},

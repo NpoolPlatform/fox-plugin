@@ -27,7 +27,6 @@ type TokenInfo struct {
 	GasType             v1.GasType         `yaml:"GasType"`
 	BlockTime           uint16             `modifiable:"true" yaml:"BlockTime"`   // seconds;modifiable,except mainnet
 	S3KeyPrxfix         string             `modifiable:"true" yaml:"S3KeyPrxfix"` // modifiable,except mainnet
-	TaskInterval        uint16             `modifiable:"true" yaml:"TaskInterval"`
 
 	// must given from user
 	LocalAPIs  []string `modifiable:"true" yaml:"LocalAPIs"`

@@ -68,6 +68,8 @@ type ENVInfo struct {
 	Position         string
 	ConfigPath       string
 	BuildChainServer string
+	TaskInterval     uint
+	TaskWorkerNum    uint
 }
 
 func SetENV(info *ENVInfo) {

@@ -9,13 +9,15 @@ import (
 )
 
 type DEHandlerFunc func(ctx context.Context, data *foxproxy.DataElement) *types.MsgInfo
-type TxHandlerFunc func(ctx context.Context, data *foxproxy.DataElement) *types.MsgInfo
+type PluginTxHandlerFunc func(ctx context.Context, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error)
+type SignTxHandlerFunc func(ctx context.Context, info *foxproxy.CoinInfo, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error)
 
 type TokenMGR struct {
-	deHandlers    map[foxproxy.MsgType]map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc
-	txHandlers    map[foxproxy.TransactionState]map[foxproxy.ChainType]map[foxproxy.CoinType]TxHandlerFunc
-	tokenInfos    map[string]*coins.TokenInfo    // from code register
-	depTokenInfos map[string]*coins.DepTokenInfo // from deployer
+	deHandlers       map[foxproxy.MsgType]map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc
+	pluginTxHandlers map[foxproxy.TransactionState]map[foxproxy.ChainType]map[foxproxy.CoinType]PluginTxHandlerFunc
+	signTxHandlers   map[foxproxy.TransactionState]map[foxproxy.ChainType]map[foxproxy.CoinType]SignTxHandlerFunc
+	tokenInfos       map[string]*coins.TokenInfo    // from code register
+	depTokenInfos    map[string]*coins.DepTokenInfo // from deployer
 }
 
 var hmgr *TokenMGR
@@ -29,9 +31,10 @@ func GetTokenMGR() *TokenMGR {
 
 func newTokenMGR() *TokenMGR {
 	return &TokenMGR{
-		deHandlers:    make(map[foxproxy.MsgType]map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc),
-		txHandlers:    make(map[foxproxy.TransactionState]map[foxproxy.ChainType]map[foxproxy.CoinType]TxHandlerFunc),
-		tokenInfos:    make(map[string]*coins.TokenInfo),
-		depTokenInfos: make(map[string]*coins.DepTokenInfo),
+		deHandlers:       make(map[foxproxy.MsgType]map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc),
+		pluginTxHandlers: make(map[foxproxy.TransactionState]map[foxproxy.ChainType]map[foxproxy.CoinType]PluginTxHandlerFunc),
+		signTxHandlers:   make(map[foxproxy.TransactionState]map[foxproxy.ChainType]map[foxproxy.CoinType]SignTxHandlerFunc),
+		tokenInfos:       make(map[string]*coins.TokenInfo),
+		depTokenInfos:    make(map[string]*coins.DepTokenInfo),
 	}
 }

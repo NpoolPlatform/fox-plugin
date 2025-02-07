@@ -40,14 +40,14 @@ func (mgr *TokenMGR) RegisterPluginDEHandler(
 		// decode payload to requeast
 		// run handler
 		// and encode result to payload
-		outPayload, err := func(data *foxproxy.DataElement, info *coins.TokenInfo, in interface{}) ([]byte, error) {
+		outPayload, err := func() ([]byte, error) {
 			inData := utils.Copy(in)
 			err := json.Unmarshal(data.Payload, inData)
 			if err != nil {
 				return nil, err
 			}
 
-			out, err := handler(ctx, data.CoinInfo, info, inData)
+			out, err := handler(ctx, data.CoinInfo, &info.TokenInfo, inData)
 			if err != nil {
 				return nil, err
 			}
@@ -57,7 +57,7 @@ func (mgr *TokenMGR) RegisterPluginDEHandler(
 				return nil, err
 			}
 			return outPayload, nil
-		}(data, &info.TokenInfo, in)
+		}()
 
 		statusMsg := ""
 		if err != nil {
@@ -109,7 +109,7 @@ func (mgr *TokenMGR) RegisterSignDEHandler(
 		// decode payload to requeast
 		// run handler
 		// and encode result to payload
-		outPayload, err := func(data *foxproxy.DataElement, info *coins.TokenInfo, in interface{}) ([]byte, error) {
+		outPayload, err := func() ([]byte, error) {
 			inData := utils.Copy(in)
 			err := json.Unmarshal(data.Payload, inData)
 			if err != nil {
@@ -126,7 +126,7 @@ func (mgr *TokenMGR) RegisterSignDEHandler(
 				return nil, err
 			}
 			return outPayload, nil
-		}(data, info, in)
+		}()
 
 		statusMsg := ""
 		if err != nil {

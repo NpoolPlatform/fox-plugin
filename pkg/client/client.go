@@ -40,7 +40,7 @@ func getConn(target string, tlsCfg credentials.TransportCredentials) (*grpc.Clie
 	rlk.Lock()
 	defer rlk.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	secureOpt := grpc.WithInsecure()

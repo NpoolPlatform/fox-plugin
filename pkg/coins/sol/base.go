@@ -62,7 +62,7 @@ var (
 		ChainNativeCoinName: ChainNativeCoinName,
 		GasType:             v1.GasType_GasUnsupported,
 		BlockTime:           1,
-		S3KeyPrxfix:         "solana",
+		S3KeyPrxfix:         "solana/",
 	}
 )
 

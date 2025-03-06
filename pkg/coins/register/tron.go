@@ -1,8 +1,14 @@
 package register
 
 import (
+	"context"
+
+	"github.com/NpoolPlatform/fox-plugin/pkg/coins"
 	"github.com/NpoolPlatform/fox-plugin/pkg/coins/handler"
 	"github.com/NpoolPlatform/fox-plugin/pkg/coins/tron"
+	"github.com/NpoolPlatform/fox-plugin/pkg/coins/tron/plugin"
+	"github.com/NpoolPlatform/fox-plugin/pkg/coins/tron/sign"
+	"github.com/NpoolPlatform/message/npool/foxproxy"
 )
 
 func init() {
@@ -10,4 +16,20 @@ func init() {
 	if err := mgr.RegisterTokenInfo(tron.TronToken); err != nil {
 		panic(err)
 	}
+
+	mgr.RegisterPluginDEHandler(
+		foxproxy.MsgType_MsgTypeGetBalance,
+		tron.TronToken,
+		&foxproxy.GetBalanceRequest{},
+		func(ctx context.Context, coinInfo *foxproxy.CoinInfo, info *coins.TokenInfo, req interface{}) (interface{}, error) {
+			return plugin.WalletBalance(ctx, info, req.(*foxproxy.GetBalanceRequest))
+		})
+
+	mgr.RegisterSignDEHandler(
+		foxproxy.MsgType_MsgTypeCreateWallet,
+		tron.TronToken,
+		&foxproxy.CreateWalletRequest{},
+		func(ctx context.Context, coinInfo *foxproxy.CoinInfo, info *coins.TokenInfo, req interface{}) (interface{}, error) {
+			return sign.CreateTrxAccount(ctx, coinInfo, info, req.(*foxproxy.CreateWalletRequest))
+		})
 }

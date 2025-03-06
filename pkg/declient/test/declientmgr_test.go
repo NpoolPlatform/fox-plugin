@@ -62,7 +62,7 @@ func MockOnServer(ctx context.Context, grpcPort int) {
 // for test
 func RegisterDEServer(stream foxproxy.FoxProxyStream_DEStreamServer) error {
 	select {
-	case <-time.NewTicker(time.Second * 3).C:
+	case <-time.NewTimer(time.Second * 3).C:
 		return wlog.Errorf("timeout for register connection")
 	default:
 		data, err := stream.Recv()

@@ -133,22 +133,22 @@ func (mgr *TokenMGR) RegisterDepTokenInfosFromYaml(yamlFile string) error {
 	if err != nil {
 		return wlog.WrapError(err)
 	}
-
 	modifiableFileds := coins.GetModifiableFileds()
 
 	depTokenInfos := []*coins.DepTokenInfo{}
-	for _, envEntry := range depTokenEntrys.Infos {
-		if _, ok := envEntry["TempName"]; !ok {
+	for _, info := range depTokenEntrys.Infos {
+		if _, ok := info["TempName"]; !ok {
 			return wlog.Errorf("have no TempName field")
 		}
-		tempName, ok := envEntry["TempName"].(string)
+		tempName, ok := info["TempName"].(string)
 		if !ok {
 			return wlog.Errorf("value of TempName is not string")
 		}
 
 		depEntry := make(utils.Entry)
+		var infoEntry = info["TokenInfo"].(map[interface{}]interface{})
 		for _, filedName := range modifiableFileds {
-			if v, ok := envEntry[filedName]; ok {
+			if v, ok := infoEntry[filedName]; ok {
 				depEntry[filedName] = v
 			}
 		}

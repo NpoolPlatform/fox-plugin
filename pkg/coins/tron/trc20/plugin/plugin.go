@@ -8,65 +8,19 @@ import (
 
 	tronclient "github.com/Geapefurit/gotron-sdk/pkg/client"
 	"github.com/Geapefurit/gotron-sdk/pkg/proto/api"
-	"github.com/NpoolPlatform/message/npool/sphinxplugin"
-	"github.com/NpoolPlatform/sphinx-plugin/pkg/coins"
-	"github.com/NpoolPlatform/sphinx-plugin/pkg/coins/register"
-	"github.com/NpoolPlatform/sphinx-plugin/pkg/coins/tron"
-	tron_plugin "github.com/NpoolPlatform/sphinx-plugin/pkg/coins/tron/plugin"
-	"github.com/NpoolPlatform/sphinx-plugin/pkg/env"
-	ct "github.com/NpoolPlatform/sphinx-plugin/pkg/types"
+	"github.com/NpoolPlatform/fox-plugin/pkg/coins"
+	"github.com/NpoolPlatform/fox-plugin/pkg/coins/tron"
+	ct "github.com/NpoolPlatform/fox-plugin/pkg/types"
 )
 
-// here register plugin func
-func init() {
-	register.RegisteTokenHandler(
-		coins.Trc20,
-		register.OpGetBalance,
-		WalletBalance,
-	)
-	register.RegisteTokenHandler(
-		coins.Trc20,
-		register.OpPreSign,
-		BuildTransaciton,
-	)
-	register.RegisteTokenHandler(
-		coins.Trc20,
-		register.OpBroadcast,
-		tron_plugin.BroadcastTransaction,
-	)
-	register.RegisteTokenHandler(
-		coins.Trc20,
-		register.OpSyncTx,
-		tron_plugin.SyncTxState,
-	)
-
-	err := register.RegisteAbortFuncErr(sphinxplugin.CoinType_CoinTypeusdttrc20, tron.TxFailErr)
-	if err != nil {
-		panic(err)
-	}
-
-	err = register.RegisteAbortFuncErr(sphinxplugin.CoinType_CoinTypetusdttrc20, tron.TxFailErr)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func WalletBalance(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (out []byte, err error) {
+func WalletBalance(ctx context.Context, in []byte, info *coins.TokenInfo) (out []byte, err error) {
 	wbReq := &ct.WalletBalanceRequest{}
 	err = json.Unmarshal(in, wbReq)
 	if err != nil {
 		return nil, err
 	}
 
-	v, ok := env.LookupEnv(env.ENVCOINNET)
-	if !ok {
-		return nil, env.ErrEVNCoinNet
-	}
-	if !coins.CheckSupportNet(v) {
-		return nil, env.ErrEVNCoinNetValue
-	}
-
-	contract := tron.USDTContract(v)
+	contract := info.Contract
 	err = tron.ValidAddress(contract)
 	if err != nil {
 		return nil, fmt.Errorf("contract %v, %v, %v", contract, tron.AddressInvalid, err)
@@ -78,7 +32,7 @@ func WalletBalance(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (
 	}
 
 	client := tron.Client()
-	err = client.WithClient(func(c *tronclient.GrpcClient) (bool, error) {
+	err = client.WithClient(info.LocalAPIs, info.PublicAPIs, func(c *tronclient.GrpcClient) (bool, error) {
 		bl, err = c.TRC20ContractBalance(wbReq.Address, contract)
 		if err != nil && strings.Contains(err.Error(), tron.AddressNotActive) {
 			bl = tron.EmptyTRC20
@@ -104,15 +58,11 @@ func WalletBalance(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (
 	return out, err
 }
 
-func BuildTransaciton(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (out []byte, err error) {
+func BuildTransaciton(ctx context.Context, in []byte, info *coins.TokenInfo) (out []byte, err error) {
 	baseInfo := &ct.BaseInfo{}
 	err = json.Unmarshal(in, baseInfo)
 	if err != nil {
 		return nil, err
-	}
-
-	if !coins.CheckSupportNet(baseInfo.ENV) {
-		return nil, env.ErrEVNCoinNetValue
 	}
 
 	err = tron.ValidAddress(baseInfo.From)
@@ -125,7 +75,7 @@ func BuildTransaciton(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo
 		return nil, fmt.Errorf("%v,%v", tron.AddressInvalid, err)
 	}
 
-	contract := tron.USDTContract(baseInfo.ENV)
+	contract := info.Contract
 	err = tron.ValidAddress(contract)
 	if err != nil {
 		return nil, fmt.Errorf("contract %v, %v, %v", contract, tron.AddressInvalid, err)
@@ -133,7 +83,7 @@ func BuildTransaciton(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo
 
 	var txExtension *api.TransactionExtention
 	client := tron.Client()
-	err = client.WithClient(func(c *tronclient.GrpcClient) (bool, error) {
+	err = client.WithClient(info.LocalAPIs, info.PublicAPIs, func(c *tronclient.GrpcClient) (bool, error) {
 		txExtension, err = c.TRC20Send(
 			baseInfo.From,
 			baseInfo.To,

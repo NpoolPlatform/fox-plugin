@@ -2,7 +2,7 @@ package tron
 
 import (
 	"github.com/Geapefurit/gotron-sdk/pkg/proto/api"
-	ct "github.com/NpoolPlatform/sphinx-plugin/pkg/types"
+	ct "github.com/NpoolPlatform/fox-plugin/pkg/types"
 )
 
 type SignMsgTx struct {

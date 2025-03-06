@@ -25,8 +25,8 @@ type TokenInfo struct {
 	ChainNickname       string             `modifiable:"true" yaml:"ChainNickname"`       // modifiable,except mainnet
 	ChainNativeCoinName string             `modifiable:"true" yaml:"ChainNativeCoinName"` // modifiable,except mainnet
 	GasType             v1.GasType         `yaml:"GasType"`
-	BlockTime           uint16             `modifiable:"true" yaml:"BlockTime"`   // seconds;modifiable,except mainnet
-	S3KeyPrxfix         string             `modifiable:"true" yaml:"S3KeyPrxfix"` // modifiable,except mainnet
+	BlockTime           uint16             `modifiable:"true" yaml:"BlockTime"`    // seconds;modifiable,except mainnet
+	S3KeyPrxfix         string             `modifiable:"false" yaml:"S3KeyPrxfix"` // modifiable,except mainnet
 
 	// must given from user
 	LocalAPIs  []string `modifiable:"true" yaml:"LocalAPIs"`

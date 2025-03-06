@@ -1,4 +1,4 @@
-package tron
+package sign
 
 import (
 	"context"
@@ -9,39 +9,22 @@ import (
 	"fmt"
 
 	addr "github.com/Geapefurit/gotron-sdk/pkg/address"
+	"github.com/NpoolPlatform/fox-plugin/pkg/coins"
+	"github.com/NpoolPlatform/fox-plugin/pkg/coins/tron"
 	"github.com/NpoolPlatform/go-service-framework/pkg/oss"
-	"github.com/NpoolPlatform/sphinx-plugin/pkg/coins"
-	"github.com/NpoolPlatform/sphinx-plugin/pkg/coins/register"
-	"github.com/NpoolPlatform/sphinx-plugin/pkg/coins/tron"
-	"github.com/NpoolPlatform/sphinx-plugin/pkg/env"
-	ct "github.com/NpoolPlatform/sphinx-plugin/pkg/types"
+	"github.com/NpoolPlatform/message/npool/foxproxy"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"google.golang.org/protobuf/proto"
 )
 
-func init() {
-	register.RegisteTokenHandler(
-		coins.Tron,
-		register.OpWalletNew,
-		CreateTrxAccount,
-	)
-	register.RegisteTokenHandler(
-		coins.Tron,
-		register.OpSign,
-		SignTrxMSG,
-	)
+func SignTrxMSG(ctx context.Context, in []byte, info *coins.TokenInfo) (out []byte, err error) {
+	return SignTronMSG(ctx, info.S3KeyPrxfix, in)
 }
 
-const s3KeyPrxfix = "tron/"
-
-func SignTrxMSG(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (out []byte, err error) {
-	return SignTronMSG(ctx, s3KeyPrxfix, in)
-}
-
-func CreateTrxAccount(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (out []byte, err error) {
-	return CreateTronAccount(ctx, s3KeyPrxfix, in)
+func CreateTrxAccount(ctx context.Context, coinInfo *foxproxy.CoinInfo, info *coins.TokenInfo, req *foxproxy.CreateWalletRequest) (*foxproxy.CreateWalletResponse, error) {
+	return CreateTronAccount(ctx, info.S3KeyPrxfix, req)
 }
 
 func SignTronMSG(ctx context.Context, s3Strore string, in []byte) (out []byte, err error) {
@@ -84,16 +67,7 @@ func SignTronMSG(ctx context.Context, s3Strore string, in []byte) (out []byte, e
 	return json.Marshal(signedMsg)
 }
 
-func CreateTronAccount(ctx context.Context, s3Strore string, in []byte) (out []byte, err error) {
-	info := ct.NewAccountRequest{}
-	if err := json.Unmarshal(in, &info); err != nil {
-		return nil, err
-	}
-
-	if !coins.CheckSupportNet(info.ENV) {
-		return nil, env.ErrEVNCoinNetValue
-	}
-
+func CreateTronAccount(ctx context.Context, s3Strore string, req *foxproxy.CreateWalletRequest) (*foxproxy.CreateWalletResponse, error) {
 	priv, err := btcec.NewPrivateKey(btcec.S256())
 	if err != nil {
 		return nil, err
@@ -119,6 +93,7 @@ func CreateTronAccount(ctx context.Context, s3Strore string, in []byte) (out []b
 		return nil, err
 	}
 
-	naResp := &ct.NewAccountResponse{Address: pubkey}
-	return json.Marshal(naResp)
+	return &foxproxy.CreateWalletResponse{Info: &foxproxy.WalletInfo{
+		Address: pubkey,
+	}}, nil
 }

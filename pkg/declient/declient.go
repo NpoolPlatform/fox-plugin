@@ -29,7 +29,7 @@ func RegisterDEClient(
 	infos []*foxproxy.CoinInfo,
 ) (*DEClient, error) {
 	select {
-	case <-time.NewTicker(time.Second * 3).C:
+	case <-time.NewTimer(time.Second * 3).C:
 		return nil, wlog.Errorf("timeout for register connection")
 	default:
 		if len(infos) == 0 {

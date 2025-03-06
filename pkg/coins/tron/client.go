@@ -124,8 +124,12 @@ func (tClients *tClients) WithClient(localAddrs, publicAddrs []string, fn func(*
 
 		retry, apiErr = fn(client)
 		client.Stop()
+
 		if !retry {
-			logger.Sugar().Errorw("WithClient", "Endpoint", ep, "Error", apiErr)
+			if apiErr != nil {
+				logger.Sugar().Errorw("WithClient", "Endpoint", ep, "Error", apiErr)
+			}
+
 			return apiErr
 		}
 	}

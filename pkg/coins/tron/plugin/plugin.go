@@ -8,53 +8,18 @@ import (
 	"strings"
 
 	"github.com/NpoolPlatform/go-service-framework/pkg/logger"
+	"github.com/NpoolPlatform/message/npool/foxproxy"
 
 	tronclient "github.com/Geapefurit/gotron-sdk/pkg/client"
-	"github.com/NpoolPlatform/message/npool/sphinxplugin"
-	"github.com/NpoolPlatform/sphinx-plugin/pkg/coins"
-	"github.com/NpoolPlatform/sphinx-plugin/pkg/coins/register"
-	"github.com/NpoolPlatform/sphinx-plugin/pkg/coins/tron"
-	"github.com/NpoolPlatform/sphinx-plugin/pkg/env"
+	"github.com/NpoolPlatform/fox-plugin/pkg/coins"
+	"github.com/NpoolPlatform/fox-plugin/pkg/coins/tron"
+	"github.com/NpoolPlatform/fox-plugin/pkg/env"
 
 	"github.com/Geapefurit/gotron-sdk/pkg/common"
 	"github.com/Geapefurit/gotron-sdk/pkg/proto/api"
 	"github.com/Geapefurit/gotron-sdk/pkg/proto/core"
-	ct "github.com/NpoolPlatform/sphinx-plugin/pkg/types"
+	ct "github.com/NpoolPlatform/fox-plugin/pkg/types"
 )
-
-// here register plugin func
-func init() {
-	register.RegisteTokenHandler(
-		coins.Tron,
-		register.OpGetBalance,
-		WalletBalance,
-	)
-	register.RegisteTokenHandler(
-		coins.Tron,
-		register.OpPreSign,
-		BuildTransaciton,
-	)
-	register.RegisteTokenHandler(
-		coins.Tron,
-		register.OpBroadcast,
-		BroadcastTransaction,
-	)
-	register.RegisteTokenHandler(
-		coins.Tron,
-		register.OpSyncTx,
-		SyncTxState,
-	)
-
-	err := register.RegisteAbortFuncErr(sphinxplugin.CoinType_CoinTypetron, tron.TxFailErr)
-	if err != nil {
-		panic(err)
-	}
-
-	err = register.RegisteAbortFuncErr(sphinxplugin.CoinType_CoinTypettron, tron.TxFailErr)
-	if err != nil {
-		panic(err)
-	}
-}
 
 // redefine Code ,because github.com/Geapefurit/gotron-sdk/pkg/proto/core/Tron.pb.go line 564 spelling err
 const (
@@ -62,22 +27,15 @@ const (
 	TransactionInfoFAILED  = 1
 )
 
-func WalletBalance(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (out []byte, err error) {
-	wbReq := &ct.WalletBalanceRequest{}
-	err = json.Unmarshal(in, wbReq)
-	if err != nil {
-		return in, err
-	}
-
-	if err := tron.ValidAddress(wbReq.Address); err != nil {
-		return in, err
+func WalletBalance(ctx context.Context, tokenInfo *coins.TokenInfo, in *foxproxy.GetBalanceRequest) (*foxproxy.GetBalanceResponse, error) {
+	if err := tron.ValidAddress(in.Address); err != nil {
+		return nil, err
 	}
 
 	client := tron.Client()
-
 	var bl int64
-	err = client.WithClient(func(cli *tronclient.GrpcClient) (bool, error) {
-		acc, err := cli.GetAccount(wbReq.Address)
+	err := client.WithClient(tokenInfo.LocalAPIs, tokenInfo.PublicAPIs, func(cli *tronclient.GrpcClient) (bool, error) {
+		acc, err := cli.GetAccount(in.Address)
 		if err != nil && strings.Contains(err.Error(), tron.AddressNotActive) {
 			bl = tron.EmptyTRX
 			return false, nil
@@ -92,16 +50,18 @@ func WalletBalance(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (
 		return false, nil
 	})
 	if err != nil {
-		return in, err
+		return nil, err
 	}
 
-	wbResp := &ct.WalletBalanceResponse{}
 	f := tron.TRXToBigFloat(bl)
+	blance, _ := f.Float64()
 
-	wbResp.Balance, _ = f.Float64()
-	wbResp.BalanceStr = f.Text('f', tron.TRXACCURACY)
-
-	return json.Marshal(wbResp)
+	return &foxproxy.GetBalanceResponse{
+		Info: &foxproxy.BalanceInfo{
+			Balance:    blance,
+			BalanceStr: f.Text('f', tron.TRXACCURACY),
+		},
+	}, nil
 }
 
 func BuildTransaciton(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (out []byte, err error) {
@@ -127,7 +87,7 @@ func BuildTransaciton(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo
 	client := tron.Client()
 
 	var txExtension *api.TransactionExtention
-	err = client.WithClient(func(cli *tronclient.GrpcClient) (bool, error) {
+	err = client.WithClient(tokenInfo.LocalAPIs, tokenInfo.PublicAPIs, func(cli *tronclient.GrpcClient) (bool, error) {
 		_, err := cli.GetAccount(from)
 		if err != nil {
 			return true, err
@@ -149,7 +109,7 @@ func BuildTransaciton(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo
 	}
 
 	signTx := &tron.SignMsgTx{
-		Base:        *baseInfo,
+		// Base:        *baseInfo,
 		TxExtension: txExtension,
 	}
 
@@ -167,7 +127,7 @@ func BroadcastTransaction(ctx context.Context, in []byte, tokenInfo *coins.Token
 	transaction := bReq.TxExtension.Transaction
 	bReq.TxExtension.GetTxid()
 	var result *api.Return
-	err = client.WithClient(func(cli *tronclient.GrpcClient) (bool, error) {
+	err = client.WithClient(tokenInfo.LocalAPIs, tokenInfo.PublicAPIs, func(cli *tronclient.GrpcClient) (bool, error) {
 		result, err = cli.Broadcast(transaction)
 		if err != nil && result != nil && result.GetCode() == api.Return_TRANSACTION_EXPIRATION_ERROR {
 			return false, err
@@ -228,7 +188,7 @@ func SyncTxState(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (ou
 	client := tron.Client()
 
 	var txInfo *core.TransactionInfo
-	err = client.WithClient(func(cli *tronclient.GrpcClient) (bool, error) {
+	err = client.WithClient(tokenInfo.LocalAPIs, tokenInfo.PublicAPIs, func(cli *tronclient.GrpcClient) (bool, error) {
 		txInfo, err = cli.GetTransactionInfoByID(syncReq.TxID)
 		if err != nil {
 			logger.Sugar().Errorw("SyncTxState", "Req", syncReq, "Error", err)

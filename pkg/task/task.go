@@ -50,5 +50,5 @@ func Run(ctx context.Context) {
 
 	go RegisterCoin(ctx)
 
-	// go PluginPullTXs(ctx)
+	go PluginPullTXs(ctx)
 }

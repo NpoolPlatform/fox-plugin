@@ -18,14 +18,14 @@ func (mgr *DEClientMGR) StartDEStream(ctx context.Context, clientType foxproxy.C
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.NewTimer(time.Second * (1 << i)).C:
+			case <-time.NewTimer(time.Second * (2 << i)).C:
 				if err := mgr.connectAndRecv(ctx, clientType, proxyHost, position, tlsCfg); err != nil {
 					logger.Sugar().Error(err)
 					i++
 				} else {
 					i = 0
 				}
-				if i > 8 {
+				if i > 4 {
 					i = 0
 				}
 			}

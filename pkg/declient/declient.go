@@ -86,6 +86,7 @@ func (conn *DEClient) WatchRecv(onRecv func(data *foxproxy.DataElement)) {
 }
 
 func (conn *DEClient) OnRecv() {
+	defer conn.Close()
 	defer conn.cancel()
 	for {
 		select {

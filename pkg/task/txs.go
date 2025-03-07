@@ -19,17 +19,18 @@ func PluginPullTXs(ctx context.Context) {
 			return
 		case <-time.NewTimer(time.Second * 3).C:
 			coinInfos := tokenMGR.GetDepCoinInfos()
-			txs := []*foxproxy.Transaction{}
+			txs := &[]*foxproxy.Transaction{}
 			err := clientMGR.SendAndRecv(ctx, foxproxy.MsgType_MsgTypeAssginPluginTxs, coinInfos, txs)
 			if err != nil {
 				logger.Sugar().Error(err)
 				continue
 			}
-			for _, tx := range txs {
+			for _, tx := range *txs {
 				err = clientMGR.SendAndRecv(ctx, foxproxy.MsgType_MsgTypeSubmitTx, &foxproxy.SubmitTransaction{
 					TransactionID: tx.TransactionID,
 					Payload:       tx.Payload,
 					State:         tx.State,
+					LockTime:      tx.LockTime,
 					ExitCode:      0,
 				}, nil)
 				if err != nil {
@@ -37,7 +38,6 @@ func PluginPullTXs(ctx context.Context) {
 					continue
 				}
 			}
-			return
 		}
 	}
 }
@@ -90,17 +90,18 @@ func SignPullTXs(ctx context.Context) {
 			return
 		case <-time.NewTimer(time.Second * 3).C:
 			coinInfos := tokenMGR.GetCoinInfos()
-			txs := []*foxproxy.Transaction{}
+			txs := &[]*foxproxy.Transaction{}
 			err := clientMGR.SendAndRecv(ctx, foxproxy.MsgType_MsgTypeAssginSignTxs, coinInfos, txs)
 			if err != nil {
 				logger.Sugar().Error(err)
 				continue
 			}
-			for _, tx := range txs {
+			for _, tx := range *txs {
 				err = clientMGR.SendAndRecv(ctx, foxproxy.MsgType_MsgTypeSubmitTx, &foxproxy.SubmitTransaction{
 					TransactionID: tx.TransactionID,
 					Payload:       tx.Payload,
 					State:         tx.State,
+					LockTime:      tx.LockTime,
 					ExitCode:      0,
 				}, nil)
 				if err != nil {
@@ -108,7 +109,6 @@ func SignPullTXs(ctx context.Context) {
 					continue
 				}
 			}
-			return
 		}
 	}
 }

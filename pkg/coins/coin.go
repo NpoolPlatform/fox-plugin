@@ -52,3 +52,13 @@ func GetModifiableFileds() []string {
 	}
 	return ret
 }
+
+func ToSubmitTx(tx *foxproxy.Transaction) *foxproxy.SubmitTransaction {
+	return &foxproxy.SubmitTransaction{
+		TransactionID: tx.TransactionID,
+		Payload:       tx.Payload,
+		State:         tx.State,
+		LockTime:      tx.LockTime,
+		ExitCode:      0,
+	}
+}

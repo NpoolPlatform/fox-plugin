@@ -32,4 +32,28 @@ func init() {
 		func(ctx context.Context, coinInfo *foxproxy.CoinInfo, info *coins.TokenInfo, req interface{}) (interface{}, error) {
 			return sign.CreateTrxAccount(ctx, coinInfo, info, req.(*foxproxy.CreateWalletRequest))
 		})
+
+	mgr.RegisterTxHandler(
+		foxproxy.TransactionState_TransactionStatePrepare,
+		tron.TronToken,
+		plugin.BuildTransaciton,
+	)
+
+	mgr.RegisterTxHandler(
+		foxproxy.TransactionState_TransactionStateSign,
+		tron.TronToken,
+		sign.SignTronMSG,
+	)
+
+	mgr.RegisterTxHandler(
+		foxproxy.TransactionState_TransactionStateBroadcast,
+		tron.TronToken,
+		plugin.BroadcastTransaction,
+	)
+
+	mgr.RegisterTxHandler(
+		foxproxy.TransactionState_TransactionStateSync,
+		tron.TronToken,
+		plugin.SyncTxState,
+	)
 }

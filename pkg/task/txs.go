@@ -10,7 +10,7 @@ import (
 	"github.com/NpoolPlatform/message/npool/foxproxy"
 )
 
-func PluginPullTXs(ctx context.Context) {
+func PluginPullTXs(ctx context.Context, txChan chan *foxproxy.Transaction) {
 	clientMGR := declient.GetDEClientMGR()
 	tokenMGR := handler.GetTokenMGR()
 	for {
@@ -26,17 +26,7 @@ func PluginPullTXs(ctx context.Context) {
 				continue
 			}
 			for _, tx := range *txs {
-				err = clientMGR.SendAndRecv(ctx, foxproxy.MsgType_MsgTypeSubmitTx, &foxproxy.SubmitTransaction{
-					TransactionID: tx.TransactionID,
-					Payload:       tx.Payload,
-					State:         tx.State,
-					LockTime:      tx.LockTime,
-					ExitCode:      0,
-				}, nil)
-				if err != nil {
-					logger.Sugar().Error(err)
-					continue
-				}
+				txChan <- tx
 			}
 		}
 	}
@@ -60,7 +50,7 @@ func PluginDealTxWorker(ctx context.Context, txChan chan *foxproxy.Transaction) 
 					LockTime:      tx.LockTime,
 					ExitCode:      -1,
 				}
-				handler, err := tokenMgr.GetPluginTxHandler(tx.State, info.ChainType, info.CoinType)
+				handler, err := tokenMgr.GetTxHandler(tx.State, info.ChainType, info.CoinType)
 				if err != nil {
 					logger.Sugar().Error(err)
 					return _submitTx
@@ -71,7 +61,7 @@ func PluginDealTxWorker(ctx context.Context, txChan chan *foxproxy.Transaction) 
 					return _submitTx
 				}
 				return submitTx
-			}
+			}()
 
 			err := declientMgr.SendAndRecv(ctx, foxproxy.MsgType_MsgTypeSubmitTx, submitTx, nil)
 			if err != nil {
@@ -81,7 +71,7 @@ func PluginDealTxWorker(ctx context.Context, txChan chan *foxproxy.Transaction) 
 	}
 }
 
-func SignPullTXs(ctx context.Context) {
+func SignPullTXs(ctx context.Context, txChan chan *foxproxy.Transaction) {
 	clientMGR := declient.GetDEClientMGR()
 	tokenMGR := handler.GetTokenMGR()
 	for {
@@ -97,17 +87,7 @@ func SignPullTXs(ctx context.Context) {
 				continue
 			}
 			for _, tx := range *txs {
-				err = clientMGR.SendAndRecv(ctx, foxproxy.MsgType_MsgTypeSubmitTx, &foxproxy.SubmitTransaction{
-					TransactionID: tx.TransactionID,
-					Payload:       tx.Payload,
-					State:         tx.State,
-					LockTime:      tx.LockTime,
-					ExitCode:      0,
-				}, nil)
-				if err != nil {
-					logger.Sugar().Error(err)
-					continue
-				}
+				txChan <- tx
 			}
 		}
 	}
@@ -131,18 +111,18 @@ func SignDealTxWorker(ctx context.Context, txChan chan *foxproxy.Transaction) {
 					LockTime:      tx.LockTime,
 					ExitCode:      -1,
 				}
-				handler, err := tokenMgr.GetSignTxHandler(tx.State, info.ChainType, info.CoinType)
+				handler, err := tokenMgr.GetTxHandler(tx.State, info.ChainType, info.CoinType)
 				if err != nil {
 					logger.Sugar().Error(err)
 					return _submitTx
 				}
-				submitTx, err := handler(ctx, nil, tx)
+				submitTx, err := handler(ctx, tx)
 				if err != nil {
 					logger.Sugar().Error(err)
 					return _submitTx
 				}
 				return submitTx
-			}
+			}()
 
 			err := declientMgr.SendAndRecv(ctx, foxproxy.MsgType_MsgTypeSubmitTx, submitTx, nil)
 			if err != nil {

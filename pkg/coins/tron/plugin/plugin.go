@@ -64,30 +64,24 @@ func WalletBalance(ctx context.Context, tokenInfo *coins.TokenInfo, in *foxproxy
 	}, nil
 }
 
-func BuildTransaciton(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (out []byte, err error) {
-	baseInfo := &ct.BaseInfo{}
-	err = json.Unmarshal(in, baseInfo)
+func BuildTransaciton(ctx context.Context, info *coins.TokenInfo, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error) {
+	err := tron.ValidAddress(tx.From)
 	if err != nil {
-		return in, err
+		return nil, fmt.Errorf("%v,%v", tron.AddressInvalid, err)
+	}
+	err = tron.ValidAddress(tx.To)
+	if err != nil {
+		return nil, fmt.Errorf("%v,%v", tron.AddressInvalid, err)
 	}
 
-	err = tron.ValidAddress(baseInfo.From)
-	if err != nil {
-		return in, fmt.Errorf("%v,%v", tron.AddressInvalid, err)
-	}
-	err = tron.ValidAddress(baseInfo.To)
-	if err != nil {
-		return in, fmt.Errorf("%v,%v", tron.AddressInvalid, err)
-	}
-
-	from := baseInfo.From
-	to := baseInfo.To
-	amount := tron.TRXToInt(baseInfo.Value)
+	from := tx.From
+	to := tx.To
+	amount := tron.TRXToInt(tx.Amount)
 
 	client := tron.Client()
 
 	var txExtension *api.TransactionExtention
-	err = client.WithClient(tokenInfo.LocalAPIs, tokenInfo.PublicAPIs, func(cli *tronclient.GrpcClient) (bool, error) {
+	err = client.WithClient(info.LocalAPIs, info.PublicAPIs, func(cli *tronclient.GrpcClient) (bool, error) {
 		_, err := cli.GetAccount(from)
 		if err != nil {
 			return true, err
@@ -105,30 +99,32 @@ func BuildTransaciton(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo
 		return false, err
 	})
 	if err != nil {
-		return in, err
+		return nil, err
 	}
 
-	signTx := &tron.SignMsgTx{
-		// Base:        *baseInfo,
-		TxExtension: txExtension,
+	submitTx := coins.ToSubmitTx(tx)
+
+	payload, err := json.Marshal(txExtension)
+	if err != nil {
+		return nil, err
 	}
 
-	return json.Marshal(signTx)
+	submitTx.Payload = payload
+	return submitTx, nil
 }
 
-func BroadcastTransaction(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (out []byte, err error) {
-	bReq := &tron.BroadcastRequest{}
-	err = json.Unmarshal(in, bReq)
+func BroadcastTransaction(ctx context.Context, info *coins.TokenInfo, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error) {
+	txExtension := &api.TransactionExtention{}
+
+	err := json.Unmarshal(tx.Payload, txExtension)
 	if err != nil {
-		return in, err
+		return nil, err
 	}
 
 	client := tron.Client()
-	transaction := bReq.TxExtension.Transaction
-	bReq.TxExtension.GetTxid()
 	var result *api.Return
-	err = client.WithClient(tokenInfo.LocalAPIs, tokenInfo.PublicAPIs, func(cli *tronclient.GrpcClient) (bool, error) {
-		result, err = cli.Broadcast(transaction)
+	err = client.WithClient(info.LocalAPIs, info.PublicAPIs, func(cli *tronclient.GrpcClient) (bool, error) {
+		result, err = cli.Broadcast(txExtension.Transaction)
 		if err != nil && result != nil && result.GetCode() == api.Return_TRANSACTION_EXPIRATION_ERROR {
 			return false, err
 		}
@@ -139,17 +135,24 @@ func BroadcastTransaction(ctx context.Context, in []byte, tokenInfo *coins.Token
 	})
 
 	if err != nil {
-		return in, err
+		return nil, err
 	}
 	if result == nil {
-		return in, fmt.Errorf("get result failed")
+		return nil, fmt.Errorf("get result failed")
 	}
 
-	if api.Return_SUCCESS == result.Code {
-		bResp := &ct.BroadcastInfo{TxID: common.BytesToHexString(bReq.TxExtension.GetTxid())}
-		if result.Result {
-			return json.Marshal(bResp)
+	if api.Return_SUCCESS == result.Code && result.Result {
+		submitTx := coins.ToSubmitTx(tx)
+		txID := common.BytesToHexString(txExtension.GetTxid())
+		bResp := &ct.BroadcastInfo{TxID: txID}
+		payload, err := json.Marshal(bResp)
+		if err != nil {
+			return nil, err
 		}
+
+		submitTx.CID = &txID
+		submitTx.Payload = payload
+		return submitTx, nil
 	}
 
 	failCodes := []api.ReturnResponseCode{
@@ -170,25 +173,25 @@ func BroadcastTransaction(ctx context.Context, in []byte, tokenInfo *coins.Token
 	}
 	for _, v := range failCodes {
 		if v == result.Code {
-			return in, env.ErrTransactionFail
+			return nil, env.ErrTransactionFail
 		}
 	}
 
-	return in, errors.New(string(result.GetMessage()))
+	return nil, errors.New(string(result.GetMessage()))
 }
 
 // done(on chain) => true
-func SyncTxState(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (out []byte, err error) {
-	syncReq := &ct.SyncRequest{}
-	err = json.Unmarshal(in, syncReq)
+func SyncTxState(ctx context.Context, info *coins.TokenInfo, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error) {
+	syncReq := &ct.BroadcastInfo{}
+	err := json.Unmarshal(tx.Payload, syncReq)
 	if err != nil {
 		logger.Sugar().Errorw("SyncTxState", "Req", syncReq, "Error", err)
-		return in, err
+		return nil, err
 	}
 	client := tron.Client()
 
 	var txInfo *core.TransactionInfo
-	err = client.WithClient(tokenInfo.LocalAPIs, tokenInfo.PublicAPIs, func(cli *tronclient.GrpcClient) (bool, error) {
+	err = client.WithClient(info.LocalAPIs, info.PublicAPIs, func(cli *tronclient.GrpcClient) (bool, error) {
 		txInfo, err = cli.GetTransactionInfoByID(syncReq.TxID)
 		if err != nil {
 			logger.Sugar().Errorw("SyncTxState", "Req", syncReq, "Error", err)
@@ -197,21 +200,24 @@ func SyncTxState(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (ou
 		return false, err
 	})
 
+	submitTx := coins.ToSubmitTx(tx)
+	submitTx.ExitCode = 1
+
 	if txInfo == nil || err != nil {
-		logger.Sugar().Errorw("SyncTxState", "Req", syncReq, "Info", txInfo, "Error", err)
-		return in, env.ErrWaitMessageOnChain
+		logger.Sugar().Errorw("SyncTxState", "Req", syncReq, "Info", txInfo, "Error", err, "Msg", "tx is syncing")
+		return submitTx, nil
 	}
 
 	if txInfo.GetResult() != TransactionInfoSUCCESS {
 		logger.Sugar().Errorw("SyncTxState", "Req", syncReq, "Info", txInfo, "Result", txInfo.GetResult())
-		return in, env.ErrTransactionFail
+		return nil, env.ErrTransactionFail
 	}
 
 	if txInfo.Receipt.GetResult() != core.Transaction_Result_SUCCESS && txInfo.Receipt.GetResult() != core.Transaction_Result_DEFAULT {
 		logger.Sugar().Errorw("SyncTxState", "Req", syncReq, "Info", txInfo, "Result", txInfo.GetResult())
-		return in, env.ErrTransactionFail
+		return nil, env.ErrTransactionFail
 	}
 
-	syncResp := &ct.SyncResponse{ExitCode: 0}
-	return json.Marshal(syncResp)
+	submitTx.ExitCode = 0
+	return submitTx, nil
 }

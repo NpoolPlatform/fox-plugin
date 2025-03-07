@@ -51,6 +51,6 @@ func Run(ctx context.Context) {
 	go RegisterCoin(ctx)
 
 	txChan := make(chan *foxproxy.Transaction)
-	go PluginPullTXs(ctx, txChan)
-	go PluginDealTxWorker(ctx, txChan)
+	go PullTXs(ctx, foxproxy.ClientType_ClientTypePlugin, txChan)
+	go DealTxWorker(ctx, txChan)
 }

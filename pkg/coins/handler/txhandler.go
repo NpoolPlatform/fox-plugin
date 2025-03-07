@@ -15,6 +15,7 @@ func (mgr *TokenMGR) RegisterTxHandler(
 ) {
 	txHandler := func(ctx context.Context, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error) {
 		_info := info
+		// the tokeninfo is credible for plugin,but not to sign
 		depInfo := mgr.GetDepTokenInfo(tx.Name)
 		if depInfo != nil {
 			_info = &depInfo.TokenInfo

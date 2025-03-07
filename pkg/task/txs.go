@@ -18,10 +18,11 @@ func PullTXs(ctx context.Context, clientType foxproxy.ClientType, txChan chan *f
 		case <-ctx.Done():
 			return
 		case <-time.NewTimer(time.Second * 3).C:
-			msgType := foxproxy.MsgType_MsgTypeAssginPluginTxs
+			msgType := foxproxy.MsgType_MsgTypeAssignPluginTxs
 			coinInfos := tokenMGR.GetDepCoinInfos()
+
 			if clientType == foxproxy.ClientType_ClientTypeSign {
-				msgType = foxproxy.MsgType_MsgTypeAssginSignTxs
+				msgType = foxproxy.MsgType_MsgTypeAssignSignTxs
 				coinInfos = tokenMGR.GetCoinInfos()
 			}
 
@@ -46,7 +47,6 @@ func DealTxWorker(ctx context.Context, txChan chan *foxproxy.Transaction) {
 		case <-ctx.Done():
 			return
 		case tx := <-txChan:
-			info := tokenMgr.GetDepTokenInfo(tx.Name)
 			submitTx := func() *foxproxy.SubmitTransaction {
 				_submitTx := &foxproxy.SubmitTransaction{
 					TransactionID: tx.TransactionID,
@@ -56,7 +56,7 @@ func DealTxWorker(ctx context.Context, txChan chan *foxproxy.Transaction) {
 					LockTime:      tx.LockTime,
 					ExitCode:      -1,
 				}
-				handler, err := tokenMgr.GetTxHandler(tx.State, info.ChainType, info.CoinType)
+				handler, err := tokenMgr.GetTxHandler(tx.State, tx.ChainType, tx.CoinType)
 				if err != nil {
 					logger.Sugar().Error(err)
 					return _submitTx

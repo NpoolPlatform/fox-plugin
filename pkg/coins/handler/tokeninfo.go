@@ -145,7 +145,12 @@ func (mgr *TokenMGR) RegisterDepTokenInfosFromYaml(yamlFile string) error {
 		}
 
 		depEntry := make(utils.Entry)
-		var infoEntry = info["TokenInfo"].(map[interface{}]interface{})
+
+		infoEntry, ok := info["TokenInfo"].(map[interface{}]interface{})
+		if !ok {
+			return wlog.Errorf("value of TokenInfo is not map")
+		}
+
 		for _, filedName := range modifiableFileds {
 			if v, ok := infoEntry[filedName]; ok {
 				depEntry[filedName] = v

@@ -22,7 +22,39 @@ func CreateTrxAccount(ctx context.Context, coinInfo *foxproxy.CoinInfo, info *co
 	return CreateTronAccount(ctx, info.S3KeyPrxfix, req)
 }
 
-func SignTronMSG(ctx context.Context, info *coins.TokenInfo, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error) {
+func CreateTronAccount(ctx context.Context, s3Strore string, req *foxproxy.CreateWalletRequest) (*foxproxy.CreateWalletResponse, error) {
+	priv, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		return nil, err
+	}
+	if len(priv.D.Bytes()) != 32 {
+		for {
+			priv, err := btcec.NewPrivateKey(btcec.S256())
+			if err != nil {
+				continue
+			}
+			if len(priv.D.Bytes()) == 32 {
+				break
+			}
+		}
+	}
+
+	a := addr.PubkeyToAddress(priv.ToECDSA().PublicKey)
+	pubkey := a.String()
+	prikey := hex.EncodeToString(priv.D.Bytes())
+
+	err = oss.PutObject(ctx, s3Strore+pubkey, []byte(prikey), true)
+	if err != nil {
+		return nil, err
+	}
+
+	return &foxproxy.CreateWalletResponse{Info: &foxproxy.WalletInfo{
+		Address: pubkey,
+	}}, nil
+}
+
+//nolint:revive
+func SignTronTX(ctx context.Context, info *coins.TokenInfo, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error) {
 	txExtension := &api.TransactionExtention{}
 	err := json.Unmarshal(tx.Payload, txExtension)
 	if err != nil {
@@ -63,35 +95,4 @@ func SignTronMSG(ctx context.Context, info *coins.TokenInfo, tx *foxproxy.Transa
 	submitTx.Payload = payload
 
 	return submitTx, nil
-}
-
-func CreateTronAccount(ctx context.Context, s3Strore string, req *foxproxy.CreateWalletRequest) (*foxproxy.CreateWalletResponse, error) {
-	priv, err := btcec.NewPrivateKey(btcec.S256())
-	if err != nil {
-		return nil, err
-	}
-	if len(priv.D.Bytes()) != 32 {
-		for {
-			priv, err := btcec.NewPrivateKey(btcec.S256())
-			if err != nil {
-				continue
-			}
-			if len(priv.D.Bytes()) == 32 {
-				break
-			}
-		}
-	}
-
-	a := addr.PubkeyToAddress(priv.ToECDSA().PublicKey)
-	pubkey := a.String()
-	prikey := hex.EncodeToString(priv.D.Bytes())
-
-	err = oss.PutObject(ctx, s3Strore+pubkey, []byte(prikey), true)
-	if err != nil {
-		return nil, err
-	}
-
-	return &foxproxy.CreateWalletResponse{Info: &foxproxy.WalletInfo{
-		Address: pubkey,
-	}}, nil
 }

@@ -9,7 +9,7 @@ import (
 )
 
 func SignTrc20MSG(ctx context.Context, info *coins.TokenInfo, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error) {
-	return tron.SignTronMSG(ctx, info, tx)
+	return tron.SignTronTX(ctx, info, tx)
 }
 
 func CreateTrc20Account(ctx context.Context, coinInfo *foxproxy.CoinInfo, info *coins.TokenInfo, req *foxproxy.CreateWalletRequest) (*foxproxy.CreateWalletResponse, error) {

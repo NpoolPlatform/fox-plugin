@@ -184,7 +184,6 @@ func (mgr *DEClientMGR) SendAndRecv(ctx context.Context, msgType foxproxy.MsgTyp
 		return wlog.WrapError(err)
 	}
 	if outPayload == nil || resp == nil {
-		resp = nil
 		return nil
 	}
 	err = json.Unmarshal(outPayload, resp)

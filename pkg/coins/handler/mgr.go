@@ -8,9 +8,11 @@ import (
 	"github.com/NpoolPlatform/message/npool/foxproxy"
 )
 
-type DEHandlerFunc func(ctx context.Context, data *foxproxy.DataElement) *types.MsgInfo
-type PluginTxHandlerFunc func(ctx context.Context, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error)
-type SignTxHandlerFunc func(ctx context.Context, info *foxproxy.CoinInfo, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error)
+type (
+	DEHandlerFunc       func(ctx context.Context, data *foxproxy.DataElement) *types.MsgInfo
+	PluginTxHandlerFunc func(ctx context.Context, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error)
+	SignTxHandlerFunc   func(ctx context.Context, info *foxproxy.CoinInfo, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error)
+)
 
 type TokenMGR struct {
 	deHandlers       map[foxproxy.MsgType]map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc

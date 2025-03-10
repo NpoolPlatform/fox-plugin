@@ -45,7 +45,7 @@ func init() {
 	mgr.RegisterTxHandler(
 		foxproxy.TransactionState_TransactionStateSign,
 		tron.TronToken,
-		sign.SignTronMSG,
+		sign.SignTronTX,
 	)
 
 	mgr.RegisterTxHandler(

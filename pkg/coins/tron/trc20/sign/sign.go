@@ -4,16 +4,14 @@ import (
 	"context"
 
 	"github.com/NpoolPlatform/fox-plugin/pkg/coins"
+	tron "github.com/NpoolPlatform/fox-plugin/pkg/coins/tron/sign"
+	"github.com/NpoolPlatform/message/npool/foxproxy"
 )
 
-const s3KeyPrxfix = "usdttrc20/"
-
-func SignTrc20MSG(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (out []byte, err error) {
-	// return tron.SignTronMSG(ctx, s3KeyPrxfix, in)
-	return
+func SignTrc20MSG(ctx context.Context, info *coins.TokenInfo, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error) {
+	return tron.SignTronMSG(ctx, info, tx)
 }
 
-func CreateTrc20Account(ctx context.Context, in []byte, tokenInfo *coins.TokenInfo) (out []byte, err error) {
-	// return tron.CreateTronAccount(ctx, tokenInfo.S3KeyPrxfix, nil)
-	return
+func CreateTrc20Account(ctx context.Context, coinInfo *foxproxy.CoinInfo, info *coins.TokenInfo, req *foxproxy.CreateWalletRequest) (*foxproxy.CreateWalletResponse, error) {
+	return tron.CreateTronAccount(ctx, info.S3KeyPrxfix, req)
 }

@@ -164,7 +164,9 @@ func (mgr *TokenMGR) RegisterDepTokenInfosFromYaml(yamlFile string) error {
 			if err != nil {
 				return wlog.WrapError(err)
 			}
-			depTokenInfos = append(depTokenInfos, ret)
+			if !ret.DisableRegiste {
+				depTokenInfos = append(depTokenInfos, ret)
+			}
 		}
 	}
 

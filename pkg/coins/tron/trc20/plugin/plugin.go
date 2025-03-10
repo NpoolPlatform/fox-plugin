@@ -10,30 +10,23 @@ import (
 	"github.com/Geapefurit/gotron-sdk/pkg/proto/api"
 	"github.com/NpoolPlatform/fox-plugin/pkg/coins"
 	"github.com/NpoolPlatform/fox-plugin/pkg/coins/tron"
-	ct "github.com/NpoolPlatform/fox-plugin/pkg/types"
+	"github.com/NpoolPlatform/message/npool/foxproxy"
 )
 
-func WalletBalance(ctx context.Context, in []byte, info *coins.TokenInfo) (out []byte, err error) {
-	wbReq := &ct.WalletBalanceRequest{}
-	err = json.Unmarshal(in, wbReq)
+func WalletBalance(ctx context.Context, info *coins.TokenInfo, in *foxproxy.GetBalanceRequest) (*foxproxy.GetBalanceResponse, error) {
+	err := tron.ValidAddress(info.Contract)
 	if err != nil {
-		return nil, err
-	}
-
-	contract := info.Contract
-	err = tron.ValidAddress(contract)
-	if err != nil {
-		return nil, fmt.Errorf("contract %v, %v, %v", contract, tron.AddressInvalid, err)
+		return nil, fmt.Errorf("contract %v, %v, %v", info.Contract, tron.AddressInvalid, err)
 	}
 
 	bl := tron.EmptyTRC20
-	if err := tron.ValidAddress(wbReq.Address); err != nil {
+	if err := tron.ValidAddress(in.Address); err != nil {
 		return nil, err
 	}
 
 	client := tron.Client()
 	err = client.WithClient(info.LocalAPIs, info.PublicAPIs, func(c *tronclient.GrpcClient) (bool, error) {
-		bl, err = c.TRC20ContractBalance(wbReq.Address, contract)
+		bl, err = c.TRC20ContractBalance(in.Address, info.Contract)
 		if err != nil && strings.Contains(err.Error(), tron.AddressNotActive) {
 			bl = tron.EmptyTRC20
 			return false, nil
@@ -48,47 +41,40 @@ func WalletBalance(ctx context.Context, in []byte, info *coins.TokenInfo) (out [
 	}
 
 	f := tron.TRC20ToBigFloat(bl)
-	wbResp := &ct.WalletBalanceResponse{}
+	balance, _ := f.Float64()
 
-	wbResp.Balance, _ = f.Float64()
-	wbResp.BalanceStr = f.Text('f', tron.TRC20ACCURACY)
-
-	out, err = json.Marshal(wbResp)
-
-	return out, err
+	return &foxproxy.GetBalanceResponse{
+		Info: &foxproxy.BalanceInfo{
+			Balance:    balance,
+			BalanceStr: f.Text('f', tron.TRC20ACCURACY),
+		},
+	}, nil
 }
 
-func BuildTransaciton(ctx context.Context, in []byte, info *coins.TokenInfo) (out []byte, err error) {
-	baseInfo := &ct.BaseInfo{}
-	err = json.Unmarshal(in, baseInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	err = tron.ValidAddress(baseInfo.From)
+func BuildTransaciton(ctx context.Context, info *coins.TokenInfo, tx *foxproxy.Transaction) (*foxproxy.SubmitTransaction, error) {
+	err := tron.ValidAddress(tx.From)
 	if err != nil {
 		return nil, fmt.Errorf("%v,%v", tron.AddressInvalid, err)
 	}
 
-	err = tron.ValidAddress(baseInfo.To)
+	err = tron.ValidAddress(tx.To)
 	if err != nil {
 		return nil, fmt.Errorf("%v,%v", tron.AddressInvalid, err)
 	}
 
-	contract := info.Contract
-	err = tron.ValidAddress(contract)
+	err = tron.ValidAddress(info.Contract)
 	if err != nil {
-		return nil, fmt.Errorf("contract %v, %v, %v", contract, tron.AddressInvalid, err)
+		return nil, fmt.Errorf("contract %v, %v, %v", info.Contract, tron.AddressInvalid, err)
 	}
 
 	var txExtension *api.TransactionExtention
 	client := tron.Client()
 	err = client.WithClient(info.LocalAPIs, info.PublicAPIs, func(c *tronclient.GrpcClient) (bool, error) {
 		txExtension, err = c.TRC20Send(
-			baseInfo.From,
-			baseInfo.To,
-			contract,
-			tron.TRC20ToBigInt(baseInfo.Value),
+			tx.From,
+			tx.To,
+			info.Contract,
+			tron.TRC20ToBigInt(tx.Amount),
 			tron.TRC20FeeLimit,
 		)
 		return false, err
@@ -96,10 +82,11 @@ func BuildTransaciton(ctx context.Context, in []byte, info *coins.TokenInfo) (ou
 	if err != nil {
 		return nil, err
 	}
-	signTx := &tron.SignMsgTx{
-		Base:        *baseInfo,
-		TxExtension: txExtension,
-	}
 
-	return json.Marshal(signTx)
+	payload, err := json.Marshal(txExtension)
+
+	submitTx := coins.ToSubmitTx(tx)
+	submitTx.Payload = payload
+
+	return submitTx, nil
 }

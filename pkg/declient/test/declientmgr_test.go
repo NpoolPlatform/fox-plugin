@@ -121,9 +121,9 @@ func TestDEClientMGR(t *testing.T) {
 	}
 
 	payload := []byte("sssssss")
-	err = mgr.SendMsg(foxproxy.MsgType_MsgTypeDefault, nil, &types.MsgInfo{
+	err = mgr.SendMsg(foxproxy.MsgType_MsgTypeDefault, nil, nil, &types.MsgInfo{
 		Payload: payload,
-	}, nil)
+	})
 	if !assert.Nil(t, err) {
 		return
 	}
@@ -154,8 +154,8 @@ func TestDEClientMGR(t *testing.T) {
 	assert.Equal(t, req.ChainID, resp.ChainID)
 
 	mgr.CloseAll()
-	err = mgr.SendMsg(foxproxy.MsgType_MsgTypeDefault, nil, &types.MsgInfo{
+	err = mgr.SendMsg(foxproxy.MsgType_MsgTypeDefault, nil, nil, &types.MsgInfo{
 		Payload: payload,
-	}, nil)
+	})
 	assert.NotNil(t, err)
 }

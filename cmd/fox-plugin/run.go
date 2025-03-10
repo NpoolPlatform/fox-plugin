@@ -14,7 +14,6 @@ import (
 	"github.com/NpoolPlatform/fox-plugin/pkg/task"
 	"github.com/NpoolPlatform/go-service-framework/pkg/logger"
 	cli "github.com/urfave/cli/v2"
-	"go.uber.org/zap"
 
 	// register coins handler
 	"github.com/NpoolPlatform/fox-plugin/pkg/coins/handler"
@@ -59,7 +58,7 @@ var runCmd = &cli.Command{
 			panic(fmt.Sprintf("Fail to create log dir %v: %v", logDir, err))
 		}
 
-		err = logger.Init(logLevel, fmt.Sprintf("%v/%v.log", logDir, serviceName), zap.AddCallerSkip(1))
+		err = logger.Init(logLevel, fmt.Sprintf("%v/%v.log", logDir, serviceName))
 		if err != nil {
 			panic(fmt.Sprintf("Fail to init logger: %v", err))
 		}

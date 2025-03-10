@@ -27,14 +27,14 @@ const (
 	TransactionInfoFAILED  = 1
 )
 
-func WalletBalance(ctx context.Context, tokenInfo *coins.TokenInfo, in *foxproxy.GetBalanceRequest) (*foxproxy.GetBalanceResponse, error) {
+func WalletBalance(ctx context.Context, info *coins.TokenInfo, in *foxproxy.GetBalanceRequest) (*foxproxy.GetBalanceResponse, error) {
 	if err := tron.ValidAddress(in.Address); err != nil {
 		return nil, err
 	}
 
 	client := tron.Client()
 	var bl int64
-	err := client.WithClient(tokenInfo.LocalAPIs, tokenInfo.PublicAPIs, func(cli *tronclient.GrpcClient) (bool, error) {
+	err := client.WithClient(info.LocalAPIs, info.PublicAPIs, func(cli *tronclient.GrpcClient) (bool, error) {
 		acc, err := cli.GetAccount(in.Address)
 		if err != nil && strings.Contains(err.Error(), tron.AddressNotActive) {
 			bl = tron.EmptyTRX

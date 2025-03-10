@@ -167,6 +167,7 @@ func (mgr *TokenMGR) GetDEHandler(msgType foxproxy.MsgType) (DEHandlerFunc, erro
 				ErrMsg:  &statusMsg,
 			}
 		}
+
 		return h(ctx, data)
 	}, nil
 }

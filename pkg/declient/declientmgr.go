@@ -66,9 +66,9 @@ func (mgr *DEClientMGR) CloseAll() {
 // default value of statusCode is success
 func (mgr *DEClientMGR) SendMsg(
 	msgType foxproxy.MsgType,
+	msgID *string,
 	connID *string,
 	msg *types.MsgInfo,
-	recvChannel chan types.MsgInfo,
 ) error {
 	var conn *DEClient
 	conns := mgr.connections
@@ -90,7 +90,7 @@ func (mgr *DEClientMGR) SendMsg(
 			return fmt.Errorf("cannot find any proxy connection,for %v", connID)
 		}
 	}
-	return mgr.sendMsg(msgType, nil, msg, conn, recvChannel)
+	return mgr.sendMsg(msgType, msgID, msg, conn)
 }
 
 // if recvChannel is not nil, recv response will send to it
@@ -100,7 +100,6 @@ func (mgr *DEClientMGR) SendMsgWithConnID(
 	connID string,
 	msgID *string,
 	msg *types.MsgInfo,
-	recvChannel chan types.MsgInfo,
 ) error {
 	var conn *DEClient
 	for _, _conn := range mgr.connections {
@@ -113,7 +112,7 @@ func (mgr *DEClientMGR) SendMsgWithConnID(
 		return fmt.Errorf("cannot find any sider,for %v", connID)
 	}
 
-	return mgr.sendMsg(msgType, msgID, msg, conn, recvChannel)
+	return mgr.sendMsg(msgType, msgID, msg, conn)
 }
 
 // if recvChannel is not nil, recv response will send to it
@@ -123,7 +122,6 @@ func (mgr *DEClientMGR) sendMsg(
 	msgID *string,
 	msg *types.MsgInfo,
 	conn *DEClient,
-	recvChannel chan types.MsgInfo,
 ) error {
 	if conn == nil {
 		return fmt.Errorf("connection is nil")
@@ -138,10 +136,6 @@ func (mgr *DEClientMGR) sendMsg(
 		msgID = &_msgID
 	}
 
-	if recvChannel != nil {
-		mgr.recvChannel.Store(*msgID, recvChannel)
-	}
-
 	return conn.Send(&foxproxy.DataElement{
 		ConnectID: conn.ID,
 		MsgID:     *msgID,
@@ -152,10 +146,14 @@ func (mgr *DEClientMGR) sendMsg(
 }
 
 func (mgr *DEClientMGR) SendAndRecvRaw(ctx context.Context, msgType foxproxy.MsgType, inPayload []byte) ([]byte, error) {
+	msgID := uuid.NewString()
 	recvChannel := make(chan types.MsgInfo)
-	defer close(recvChannel)
+	mgr.recvChannel.Store(msgID, recvChannel)
 
-	err := mgr.SendMsg(msgType, nil, &types.MsgInfo{Payload: inPayload}, recvChannel)
+	defer close(recvChannel)
+	defer mgr.recvChannel.Delete(msgID)
+
+	err := mgr.SendMsg(msgType, &msgID, nil, &types.MsgInfo{Payload: inPayload})
 	if err != nil {
 		return nil, wlog.WrapError(err)
 	}
@@ -208,6 +206,10 @@ func (mgr *DEClientMGR) DealDataElement(data *foxproxy.DataElement) {
 		}
 	}
 
+	if data.MsgType == foxproxy.MsgType_MsgTypeResponse {
+		return
+	}
+
 	var resp *types.MsgInfo
 	h, err := handler.GetTokenMGR().GetDEHandler(data.MsgType)
 	if err != nil {
@@ -216,15 +218,16 @@ func (mgr *DEClientMGR) DealDataElement(data *foxproxy.DataElement) {
 		resp = &types.MsgInfo{
 			ErrMsg: &statusMsg,
 		}
-	} else {
-		resp = h(context.Background(), data)
 	}
 
+	if h != nil {
+		resp = h(context.Background(), data)
+	}
 	if resp == nil {
 		return
 	}
 
-	err = mgr.SendMsgWithConnID(foxproxy.MsgType_MsgTypeResponse, data.ConnectID, &data.MsgID, resp, nil)
+	err = mgr.SendMsgWithConnID(foxproxy.MsgType_MsgTypeResponse, data.ConnectID, &data.MsgID, resp)
 	if err != nil {
 		logger.Sugar().Error(err)
 		return

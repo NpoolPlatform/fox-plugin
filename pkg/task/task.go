@@ -46,6 +46,7 @@ func Run(ctx context.Context) {
 			config.GetENV().Proxy,
 			config.GetENV().Position,
 			tlsConfig)
+		time.Sleep(time.Second)
 	}
 
 	go RegisterCoin(ctx)

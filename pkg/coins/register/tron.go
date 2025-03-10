@@ -20,7 +20,7 @@ func init() {
 		panic(err)
 	}
 
-	mgr.RegisterPluginDEHandler(
+	mgr.RegisterDEHandler(
 		foxproxy.MsgType_MsgTypeGetBalance,
 		tron.TronToken,
 		&foxproxy.GetBalanceRequest{},
@@ -28,7 +28,7 @@ func init() {
 			return plugin.WalletBalance(ctx, info, req.(*foxproxy.GetBalanceRequest))
 		})
 
-	mgr.RegisterSignDEHandler(
+	mgr.RegisterDEHandler(
 		foxproxy.MsgType_MsgTypeCreateWallet,
 		tron.TronToken,
 		&foxproxy.CreateWalletRequest{},
@@ -65,7 +65,7 @@ func init() {
 		panic(err)
 	}
 
-	mgr.RegisterPluginDEHandler(
+	mgr.RegisterDEHandler(
 		foxproxy.MsgType_MsgTypeGetBalance,
 		tron.USDTToken,
 		&foxproxy.GetBalanceRequest{},
@@ -73,7 +73,7 @@ func init() {
 			return trc20plugin.WalletBalance(ctx, info, req.(*foxproxy.GetBalanceRequest))
 		})
 
-	mgr.RegisterSignDEHandler(
+	mgr.RegisterDEHandler(
 		foxproxy.MsgType_MsgTypeCreateWallet,
 		tron.USDTToken,
 		&foxproxy.CreateWalletRequest{},

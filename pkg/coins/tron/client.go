@@ -40,7 +40,7 @@ func (tClients *tClients) GetGRPCClient(timeout time.Duration, endpointmgr *endp
 	ntc := tronclient.NewGrpcClientWithTimeout(endpoint, timeout)
 	err = ntc.Start(grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
-		return nil, "", err
+		return nil, endpoint, err
 	}
 
 	return ntc, endpoint, nil
@@ -106,7 +106,6 @@ func (tClients *tClients) WithClient(localAddrs, publicAddrs []string, fn func(*
 		client      *tronclient.GrpcClient
 		ep          string
 	)
-
 	endpointmgr, err := endpoints.NewManager(localAddrs, publicAddrs)
 	if err != nil {
 		return err

@@ -11,22 +11,27 @@ import (
 	"github.com/NpoolPlatform/message/npool/foxproxy"
 )
 
-func (mgr *TokenMGR) RegisterPluginDEHandler(
+func (mgr *TokenMGR) RegisterDEHandler(
 	msgType foxproxy.MsgType,
 	info *coins.TokenInfo,
 	in interface{},
 	handler func(ctx context.Context, coinInfo *foxproxy.CoinInfo, info *coins.TokenInfo, req interface{}) (interface{}, error),
 ) {
 	deHandler := func(ctx context.Context, data *foxproxy.DataElement) *types.MsgInfo {
-		info := mgr.GetDepTokenInfo(data.CoinInfo.Name)
-		if info != nil {
-			if info.CoinType != data.CoinInfo.CoinType || info.ChainType != data.CoinInfo.ChainType {
+		_info := info
+		// the tokeninfo is credible for plugin,but not to sign
+		depInfo := mgr.GetDepTokenInfo(data.CoinInfo.Name)
+		if depInfo != nil {
+			_info = &depInfo.TokenInfo
+		}
+		if _info != nil {
+			if _info.CoinType != data.CoinInfo.CoinType || _info.ChainType != data.CoinInfo.ChainType {
 				statusMsg := fmt.Sprintf(
 					"cannot match cointype or chaintype: name: %v, cointype: %v-%v, chaintype: %v-%v",
-					info.Name,
-					info.CoinType,
+					data.CoinInfo.Name,
+					_info.CoinType,
 					data.CoinInfo.CoinType,
-					info.ChainType,
+					_info.ChainType,
 					data.CoinInfo.ChainType)
 
 				return &types.MsgInfo{
@@ -46,77 +51,7 @@ func (mgr *TokenMGR) RegisterPluginDEHandler(
 			if err != nil {
 				return nil, err
 			}
-
-			out, err := handler(ctx, data.CoinInfo, &info.TokenInfo, inData)
-			if err != nil {
-				return nil, err
-			}
-
-			outPayload, err := json.Marshal(out)
-			if err != nil {
-				return nil, err
-			}
-			return outPayload, nil
-		}()
-
-		statusMsg := ""
-		if err != nil {
-			statusMsg = err.Error()
-		}
-
-		return &types.MsgInfo{
-			Payload:  outPayload,
-			ErrMsg:   &statusMsg,
-			CoinInfo: data.CoinInfo,
-		}
-	}
-
-	if _, ok := mgr.deHandlers[msgType]; !ok {
-		mgr.deHandlers[msgType] = make(map[foxproxy.ChainType]map[foxproxy.CoinType]DEHandlerFunc)
-	}
-	if _, ok := mgr.deHandlers[msgType][info.ChainType]; !ok {
-		mgr.deHandlers[msgType][info.ChainType] = make(map[foxproxy.CoinType]DEHandlerFunc)
-	}
-	mgr.deHandlers[msgType][info.ChainType][info.CoinType] = deHandler
-}
-
-func (mgr *TokenMGR) RegisterSignDEHandler(
-	msgType foxproxy.MsgType,
-	info *coins.TokenInfo,
-	in interface{},
-	handler func(ctx context.Context, coinInfo *foxproxy.CoinInfo, info *coins.TokenInfo, req interface{}) (interface{}, error),
-) {
-	deHandler := func(ctx context.Context, data *foxproxy.DataElement) *types.MsgInfo {
-		info := mgr.GetTokenInfo(data.CoinInfo.TempName)
-		if info != nil {
-			if info.CoinType != data.CoinInfo.CoinType || info.ChainType != data.CoinInfo.ChainType {
-				statusMsg := fmt.Sprintf(
-					"cannot match cointype or chaintype: tempname: %v, cointype: %v-%v, chaintype: %v-%v",
-					data.CoinInfo.TempName,
-					info.CoinType,
-					data.CoinInfo.CoinType,
-					info.ChainType,
-					data.CoinInfo.ChainType)
-
-				return &types.MsgInfo{
-					Payload:  nil,
-					ErrMsg:   &statusMsg,
-					CoinInfo: data.CoinInfo,
-				}
-			}
-		}
-
-		// decode payload to requeast
-		// run handler
-		// and encode result to payload
-		outPayload, err := func() ([]byte, error) {
-			inData := utils.Copy(in)
-			err := json.Unmarshal(data.Payload, inData)
-			if err != nil {
-				return nil, err
-			}
-
-			out, err := handler(ctx, data.CoinInfo, info, inData)
+			out, err := handler(ctx, data.CoinInfo, _info, inData)
 			if err != nil {
 				return nil, err
 			}

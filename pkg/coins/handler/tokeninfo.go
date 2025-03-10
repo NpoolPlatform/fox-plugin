@@ -40,7 +40,6 @@ func (mgr *TokenMGR) RegisterDepTokenInfo(infos []*coins.DepTokenInfo) error {
 		} else if info.Name == info.TempName {
 			return fmt.Errorf("this name(%v) cannot be used for non-mainnet", info.Name)
 		}
-
 		mgr.depTokenInfos[info.Name] = info
 	}
 	return nil
@@ -169,6 +168,5 @@ func (mgr *TokenMGR) RegisterDepTokenInfosFromYaml(yamlFile string) error {
 			}
 		}
 	}
-
 	return mgr.RegisterDepTokenInfo(depTokenInfos)
 }

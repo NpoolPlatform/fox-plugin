@@ -9,7 +9,6 @@ import (
 	"github.com/NpoolPlatform/fox-plugin/pkg/config"
 	"github.com/NpoolPlatform/fox-plugin/pkg/declient"
 	"github.com/NpoolPlatform/go-service-framework/pkg/logger"
-	"github.com/NpoolPlatform/go-service-framework/pkg/wlog"
 	"github.com/NpoolPlatform/message/npool/foxproxy"
 )
 
@@ -36,9 +35,9 @@ func RegisterCoin(ctx context.Context) {
 func Run(ctx context.Context) {
 	tlsConfig, err := client.LoadTLSConfig("/var/certs/client.a.crt", "/var/certs/client.a.key", "/var/certs/ca.crt")
 	if err != nil {
-		panic(wlog.Errorf("failed to get tls config, err: %v", err))
+		tlsConfig=nil
+		logger.Sugar().Warnf("failed to get tls config, err: %v", err)
 	}
-
 	for i := 0; i < 2; i++ {
 		go declient.GetDEClientMGR().StartDEStream(
 			ctx,

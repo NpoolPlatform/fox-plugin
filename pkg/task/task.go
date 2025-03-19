@@ -35,7 +35,6 @@ func RegisterCoin(ctx context.Context) {
 func Run(ctx context.Context) {
 	tlsConfig, err := client.LoadTLSConfig("/var/certs/client.a.crt", "/var/certs/client.a.key", "/var/certs/ca.crt")
 	if err != nil {
-		tlsConfig=nil
 		logger.Sugar().Warnf("failed to get tls config, err: %v", err)
 	}
 	for i := 0; i < 2; i++ {

@@ -29,7 +29,7 @@ func RegisterDEClient(
 	infos []*foxproxy.CoinInfo,
 ) (*DEClient, error) {
 	select {
-	case <-time.NewTicker(time.Second * 3).C:
+	case <-time.NewTimer(time.Second * 3).C:
 		return nil, wlog.Errorf("timeout for register connection")
 	default:
 		if len(infos) == 0 {
@@ -50,10 +50,9 @@ func RegisterDEClient(
 		}
 
 		err = stream.Send(&foxproxy.DataElement{
-			ConnectID:  connID,
-			MsgID:      msgID,
-			Payload:    payload,
-			StatusCode: foxproxy.StatusCode_StatusCodeSuccess,
+			ConnectID: connID,
+			MsgID:     msgID,
+			Payload:   payload,
 		})
 		if err != nil {
 			return nil, wlog.WrapError(err)
@@ -64,8 +63,8 @@ func RegisterDEClient(
 			return nil, wlog.WrapError(err)
 		}
 
-		if data.StatusCode != foxproxy.StatusCode_StatusCodeSuccess {
-			return nil, wlog.Errorf("failed to register to proxy, err: %v", data.StatusMsg)
+		if data.ErrMsg != nil && *data.ErrMsg != "" {
+			return nil, wlog.Errorf("failed to register to proxy, err: %v", data.ErrMsg)
 		}
 
 		ctx, cancel := context.WithCancel(stream.Context())
@@ -87,6 +86,7 @@ func (conn *DEClient) WatchRecv(onRecv func(data *foxproxy.DataElement)) {
 }
 
 func (conn *DEClient) OnRecv() {
+	defer conn.Close()
 	defer conn.cancel()
 	for {
 		select {

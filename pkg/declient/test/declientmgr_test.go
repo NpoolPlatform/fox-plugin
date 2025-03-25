@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/NpoolPlatform/fox-plugin/pkg/declient"
+	"github.com/NpoolPlatform/fox-plugin/pkg/declient/types"
 	"github.com/NpoolPlatform/go-service-framework/pkg/logger"
 	"github.com/NpoolPlatform/go-service-framework/pkg/wlog"
 	"github.com/NpoolPlatform/message/npool/foxproxy"
@@ -61,7 +62,7 @@ func MockOnServer(ctx context.Context, grpcPort int) {
 // for test
 func RegisterDEServer(stream foxproxy.FoxProxyStream_DEStreamServer) error {
 	select {
-	case <-time.NewTicker(time.Second * 3).C:
+	case <-time.NewTimer(time.Second * 3).C:
 		return wlog.Errorf("timeout for register connection")
 	default:
 		data, err := stream.Recv()
@@ -69,32 +70,28 @@ func RegisterDEServer(stream foxproxy.FoxProxyStream_DEStreamServer) error {
 			return wlog.WrapError(err)
 		}
 
-		statusCode := foxproxy.StatusCode_StatusCodeSuccess
 		statusMsg := ""
 
 		connInfo := &foxproxy.ClientInfo{}
 		err = json.Unmarshal(data.Payload, connInfo)
 		if err != nil {
-			statusCode = foxproxy.StatusCode_StatusCodeFailed
 			statusMsg = err.Error()
 		}
 
-		if statusCode == foxproxy.StatusCode_StatusCodeSuccess && data.ConnectID != connInfo.ID {
-			statusCode = foxproxy.StatusCode_StatusCodeFailed
-			statusMsg = err.Error()
+		if statusMsg != "" && data.ConnectID != connInfo.ID {
+			statusMsg = "connectid not matched"
 		}
 
 		err = stream.Send(&foxproxy.DataElement{
-			ConnectID:  data.ConnectID,
-			MsgID:      data.MsgID,
-			StatusCode: statusCode,
-			StatusMsg:  &statusMsg,
+			ConnectID: data.ConnectID,
+			MsgID:     data.MsgID,
+			ErrMsg:    &statusMsg,
 		})
 		if err != nil {
 			return wlog.WrapError(err)
 		}
 
-		if statusCode != foxproxy.StatusCode_StatusCodeSuccess {
+		if statusMsg != "" {
 			return wlog.Errorf(statusMsg)
 		}
 		return nil
@@ -114,7 +111,7 @@ func TestDEClientMGR(t *testing.T) {
 	// for server start
 	time.Sleep(time.Second)
 	mgr := declient.GetDEClientMGR()
-	mgr.StartDEStream(ctx, fmt.Sprintf("localhost:%d", grpcPort), "test", nil)
+	mgr.StartDEStream(ctx, foxproxy.ClientType_ClientTypePlugin, fmt.Sprintf("localhost:%d", grpcPort), "test", nil)
 	// for client connect
 	time.Sleep(time.Second * 2)
 
@@ -124,9 +121,9 @@ func TestDEClientMGR(t *testing.T) {
 	}
 
 	payload := []byte("sssssss")
-	err = mgr.SendMsg(foxproxy.MsgType_MsgTypeDefault, nil, &declient.MsgInfo{
+	err = mgr.SendMsg(foxproxy.MsgType_MsgTypeDefault, nil, nil, &types.MsgInfo{
 		Payload: payload,
-	}, nil)
+	})
 	if !assert.Nil(t, err) {
 		return
 	}
@@ -149,17 +146,16 @@ func TestDEClientMGR(t *testing.T) {
 			os.Exit(1)
 		}
 	}()
-	statucCode, err := mgr.SendAndRecv(ctx, foxproxy.MsgType_MsgTypeGetBalance, &req, &resp)
+	err = mgr.SendAndRecv(ctx, foxproxy.MsgType_MsgTypeGetBalance, &req, &resp)
 	if !assert.Nil(t, err) {
 		return
 	}
-	assert.Equal(t, statucCode.String(), foxproxy.StatusCode_StatusCodeSuccess.String())
 	assert.Equal(t, req.Name, resp.Name)
 	assert.Equal(t, req.ChainID, resp.ChainID)
 
 	mgr.CloseAll()
-	err = mgr.SendMsg(foxproxy.MsgType_MsgTypeDefault, nil, &declient.MsgInfo{
+	err = mgr.SendMsg(foxproxy.MsgType_MsgTypeDefault, nil, nil, &types.MsgInfo{
 		Payload: payload,
-	}, nil)
+	})
 	assert.NotNil(t, err)
 }

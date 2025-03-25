@@ -62,25 +62,3 @@ var (
 func LookupEnv(key string) (string, bool) {
 	return os.LookupEnv(key)
 }
-
-type CoinInfo struct {
-	NetworkType string
-	CoinType    string
-}
-
-func GetCoinInfo() (coinInfo *CoinInfo, err error) {
-	var ok bool
-	coinInfo = &CoinInfo{}
-	coinInfo.NetworkType, ok = LookupEnv(ENVCOINNET)
-	if !ok {
-		err = ErrEVNCoinNet
-		return
-	}
-
-	coinInfo.CoinType, ok = LookupEnv(ENVCOINTYPE)
-	if !ok {
-		err = ErrEVNCoinType
-		return
-	}
-	return
-}
